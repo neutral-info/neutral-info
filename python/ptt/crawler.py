@@ -13,11 +13,7 @@ from bs4 import BeautifulSoup
 
 __version__ = "1.0"
 
-# if python 2, disable verify flag in requests.get()
 VERIFY = True
-if sys.version_info[0] < 3:
-    VERIFY = False
-    requests.packages.urllib3.disable_warnings()
 
 
 class PttWebCrawler(object):
