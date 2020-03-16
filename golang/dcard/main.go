@@ -5,37 +5,55 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 
 	"github.com/gocolly/colly"
 )
 
-// Forum is the forum of Dcard
-type Forum struct {
-	Alias             string `json:"alias"`             // "midnightlab"
-	Name              string `json:"name"`              // "午夜實驗室"
-	Description       string `json:"description"`       // "午夜實驗室10/6、10/7即將在華山登場！這裏提供大家交流活動資訊與討論，請大家要遵守 Dcard 板規喔！"
-	SubscriptionCount int    `json:"subscriptionCount"` // 1842
-	CreatedAt         string `json:"createdAt"`         //"2016-05-14T19:15:15.698Z"
-	UpdatedAt         string `json:"updatedAt"`         //"2018-11-05T03:24:32.914Z"
-	Invisible         bool   `json:"invisible"`
-	IsSchool          bool   `json:"isSchool"`
-	FullyAnonymous    bool   `json:"fullyAnonymous"`
-	CanUseNickname    bool   `json:"canUseNickname"`
-	PostThumbnail     struct {
-		Size string `json:"size"` // "small
-	} `json:"postThumbnail"`
-	ShouldCategorized    bool     `json:"shouldCategorized"`    // false
-	TitlePlaceholder     string   `json:"titlePlaceholder"`     // ""
-	PostTitlePlaceholder string   `json:"postTitlePlaceholder"` // ""
-	Topics               []string `json:"topics"`               // 午夜實驗室
-	Nsfw                 bool     `json:"nsfw"`                 //false
-	PostCount            struct {
-		Last30Days int `json:"last30Days"`
-	} `json:"postCount"`
+const dataFolder = "./data"
+
+// Post is the Post of Dcard
+type Post struct {
+	ID                  int      `json:"id"`                  // 233273793
+	Title               string   `json:"title"`               // "#問 牡羊把我搞得好混亂😣😣"
+	Excerpt             string   `json:"excerpt"`             // "唉…，跟羊男也認識一年多了，當初也不知道怎麼就被吸引了，從去年開始因為暑假、出國交換，我們將近半年沒有見面，但這好像也成為一個關係加溫的契機？起初他因為一些人際關係問題，翻牆來找我討論，我也非常用心的"
+	AnonymousSchool     bool     `json:"anonymousSchool"`     // true
+	AnonymousDepartment bool     `json:"anonymousDepartment"` // true
+	Pinned              bool     `json:"pinned"`              // false
+	ForumID             string   `json:"forumId"`             // "4c6964fc-8b39-4480-a844-847f09e4e09d"
+	ReplyID             string   `json:"replyId"`             // null
+	CreatedAt           string   `json:"createdAt"`           // "2020-03-16T07:11:52.344Z"
+	UpdatedAt           string   `json:"updatedAt"`           // "2020-03-16T07:11:52.344Z"
+	CommentCount        int      `json:"commentCount"`        // 0
+	LikeCount           int      `json:"likeCount"`           // 1
+	WithNickname        bool     `json:"withNickname"`        // false
+	Tags                []string `json:"tags"`                // []
+	Topics              []string `json:"topics"`              // [ "天蠍", "牡羊", "暗戀", "星座" ]
+	Meta                struct {
+		Layout string `json:"layout"` // "classic"
+	} `json:"meta"`
+	ForumName  string `json:"forumName"`  // "星座"
+	ForumAlias string `json:"forumAlias"` // "horoscopes"
+	Gender     string `json:"gender"`     // "F"
+	ReplyTitle string `json:"replyTitle"` // null
+	MediaMeta  string `json:"mediaMeta"`  // []
+	Reactions  []struct {
+		ID    string `json:"id"` // "286f599c-f86a-4932-82f0-f5a06f1eca03"
+		Count int    `json:"count"`
+	} `json:"reactions"`
+	Hidden              bool     `json:"hidden"`
+	CustomStyle         string   `json:"customStyle"`         // null
+	IsSuspiciousAccount bool     `json:"isSuspiciousAccount"` // false
+	Layout              string   `json:"layout"`              // "classic"
+	WithImages          bool     `json:"withImages"`          // false
+	WithVideos          bool     `json:"withVideos"`          // false
+	Media               []string `json:"media"`               // []
+	ReportReasonText    string   `json:"reportReasonText"`    // ""
+	PostAvatar          string   `json:"postAvatar"`          // ""
 }
 
-// Post is the post data structure of Dcard
-type Post struct {
+// Forum is the forum data structure of Dcard
+type Forum struct {
 	ID                string `json:"id"`                // "63a0d93e-acc5-4664-b55a-81e6fe0a4d88",
 	Alias             string `json:"alias"`             // "csu",
 	Name              string `json:"name"`              // "正修科大",
@@ -82,7 +100,7 @@ type Post struct {
 	Favorite bool `json:"favorite"`
 }
 
-func main() {
+func crawlAllForums() {
 	c := colly.NewCollector()
 
 	c.OnRequest(func(r *colly.Request) {
@@ -94,8 +112,8 @@ func main() {
 		forums := r.Body
 		var forumData []Forum
 		json.Unmarshal(forums, &forumData)
-		fmt.Println(forumData)
-		f, err := os.OpenFile("forums.jsonl", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(path.Join(dataFolder, "forums.jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		defer f.Close()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -111,4 +129,42 @@ func main() {
 	})
 
 	c.Visit("https://www.dcard.tw/_api/forums")
+}
+
+func crawlLatestPosts() {
+	c := colly.NewCollector()
+
+	c.OnRequest(func(r *colly.Request) {
+		fmt.Println("Visiting", r.URL)
+	})
+
+	c.OnResponse(func(r *colly.Response) {
+		fmt.Println("Visited", r.Request.URL)
+		posts := r.Body
+		var postData []Post
+		json.Unmarshal(posts, &postData)
+		f, err := os.OpenFile(path.Join(dataFolder, "posts.jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		defer f.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, line := range postData {
+			jsonData, _ := json.Marshal(line)
+			if _, err := f.Write(append(jsonData, '\n')); err != nil {
+				log.Fatal(err)
+			}
+		}
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	})
+
+	c.Visit("https://www.dcard.tw/_api/posts")
+}
+
+func main() {
+	os.RemoveAll("data")
+	os.MkdirAll("data", os.ModePerm)
+	crawlAllForums()
+	crawlLatestPosts()
 }
