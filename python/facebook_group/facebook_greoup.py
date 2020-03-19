@@ -161,6 +161,9 @@ def tidy_up_data(post_persons, comment_persons, emoji_persons):
 
 if __name__ == '__main__':
     '''
+    程式參考：
+    1. https://freelancerlife.info/zh/blog/python%E7%B6%B2%E8%B7%AF%E7%88%AC%E8%9F%B2%E6%87%89%E7%94%A8-facebook%E7%A4%BE%E5%9C%98%E6%88%90%E5%93%A1%E5%8F%83%E8%88%87%E5%BA%A6%E5%88%86%E6%9E%90/
+
     程式說明：
     1. 請先修改帳密
     2. 確認geckodriver路徑
