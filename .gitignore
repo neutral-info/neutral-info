@@ -1,4 +1,5 @@
 __pycache__
+.mypy_cache
 
 # Add temperiory for reference
 dcard-spider-master
