@@ -1,17 +1,11 @@
-import sys
 
 from crawler import PttWebCrawler
 
 
-def main(args=None):
-    """The main routine."""
-    if args is None:
-        args = sys.argv[1:]
+def main():
+    crawler = PttWebCrawler(as_lib=True)
+    crawler.parse_articles(100, 101, "PublicServan")
 
-    PttWebCrawler(args)
-
-    # Do argument parsing here (eg. with argparse) and anything else
-    # you want your project to do.
 
 if __name__ == "__main__":
     main()

@@ -5,7 +5,6 @@ import codecs
 import json
 import os
 import re
-import sys
 import time
 
 import requests
@@ -94,7 +93,7 @@ class PttWebCrawler(object):
                         self.store(
                             filename, self.parse(link, article_id, board) + ",\n", "a"
                         )
-                except:
+                except Exception:
                     pass
             time.sleep(0.1)
         self.store(filename, u"]}", "a")
@@ -155,7 +154,7 @@ class PttWebCrawler(object):
         try:
             ip = main_content.find(text=re.compile(u"※ 發信站:"))
             ip = re.search(r"[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*", ip).group()
-        except:
+        except Exception:
             ip = "None"
 
         # 移除 '※ 發信站:' (starts with u'\u203b'), '◆ From:' (starts with u'\u25c6'), 空行及多餘空白

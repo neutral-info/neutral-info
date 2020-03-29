@@ -11,6 +11,7 @@ beautifulsoup4 = "*"
 black = "==19.10b0"
 flake8 = "*"
 pytest = "*"
+mypy = "*"
 
 [requires]
 python_version = "3.8"
