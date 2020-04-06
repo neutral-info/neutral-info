@@ -28,11 +28,12 @@ def get_htmltext(username, password):
     time.sleep(3)
 
     # 往下捲12次
-    print("1.3 往下捲12次")
+    print("1.3 預計往下捲12次")
     for i in range(12):
         y = 4000 * (i + 1)
         driver.execute_script(f"window.scrollTo(0, {y})")
-        time.sleep(2)
+        # time.sleep(2)
+        #print("1.3 往下捲第 {} 次".format(i))
 
     def ClickForMore():
         hrefBtns = driver.find_elements_by_tag_name('a')
@@ -152,16 +153,127 @@ def parse_post(username, password):
     for post_id in fbposts.keys():
         postcount += 1
         print("3.1 {}/{} 貼文ID: {}".format(postcount,
-                                        len(fbposts), post_id), end="\r")
+                                          len(fbposts), post_id), end="\r")
         driver.get('http://www.facebook.com/groups/' +
                    fbgroup + '/permalink/' + post_id)
         # time.sleep(5)
 
-        # 等待情續列的出現，出現後則點選
-        WebDriverWait(driver, 30).until(EC.presence_of_element_located(
+        # 建立一個函式用於檢測是否有『更多留言』或『檢視另XX則留言』出現
+        def checkMoreComment():
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//div[@class="_4swz _293g"]')))
+                time.sleep(1)
+                while True:
+                    try:
+                        driver.find_element_by_xpath(
+                            '//div[@class="_4swz _293g"]').click()
+                    except Exception as e:
+                        #print(post_id)
+                        #print(type(e), e)
+                        #print("click expand comment fail!")
+                        time.sleep(2)
+                        # driver.maximize_window()
+                        break
+                    else:
+                        # print(post_id)
+                        #print("click exapnd comment sucess.")
+                        checkMoreComment()
+                        break
+            except Exception as e:
+                #print(post_id)
+                #print(type(e), e)
+                #print("no expand comment link!")
+                time.sleep(2)
+                # driver.maximize_window()
+
+        checkMoreComment()
+
+        # 建立一個函式用於檢測是否留言中是否還有回留言『XX則回覆』出現
+        def checkMoreReplyComment():
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//span[@class="_4sso _4ssp"]')))
+                time.sleep(1)
+                while True:
+                    try:
+                        driver.find_element_by_xpath(
+                            '//span[@class="_4sso _4ssp"]').click()
+                    except Exception as e:
+                        #print(post_id)
+                        #print(type(e), e)
+                        #print("click reply comment fail!")
+                        time.sleep(2)
+                        # driver.maximize_window()
+                        break
+                    else:
+                        # print(post_id)
+                        #print("click reply comment sucess.")
+                        checkMoreReplyComment()
+                        break
+            except Exception as e:
+                #print(post_id)
+                #print(type(e), e)
+                #print("no reply comment link!")
+                time.sleep(2)
+                # driver.maximize_window()
+
+        checkMoreReplyComment()
+
+        # 讀取回文內容
+        soupSomeArticle = BeautifulSoup(driver.page_source, 'html.parser')
+        postComment = []
+        try:
+            # aria-label="留言"
+            listComments = soupSomeArticle.findAll(
+                'div', {'aria-label': '留言'})
+            for listComment in listComments:
+                try:
+                    # CommentUser = listComment.find(
+                    #     'a', {'class': '_6qw4'}).text
+                    CommentUserID = re.findall(
+                        'data-hovercard="(.*?)"', str(listComment))[0].split('id=')[1]
+                except:
+                    CommentUserID = 'error'
+
+                try:
+                    CommentContent = listComment.find(
+                        'span', {'dir': 'ltr'}).text
+                except:
+                    CommentContent = 'Sticker'
+
+                try:
+                    CommentTimestamp = re.findall(
+                        'data-utime="(.*?)"', str(listComment))[0]
+                except:
+                    CommentTimestamp = 'error'
+
+                # print('CommentUserID:{}, CommentContent:{}, CommentTimestamp:{}'.format(
+                #     CommentUserID, CommentContent, CommentTimestamp))
+                # 建立回文物件
+                postCommentContent = {
+                    'CommentUserID': CommentUserID,
+                    'CommentContent': CommentContent,
+                    'CommentTimestamp': CommentTimestamp
+                }
+                postComment.append(postCommentContent)
+
+            fbposts[post_id].update({
+                'postComment': postComment
+            })
+
+        except Exception as e:
+            print(type(e), e)
+            print("{} read comment fail!".format(post_id))
+            time.sleep(2)
+
+        # 等待情緒列的出現，出現後則點選
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located(
             (By.XPATH, '//a[@data-testid="UFI2ReactionsCount/root"]')))
         while True:
             try:
+                # 因應往下捲蒐集回應的動作，導致偵測情緒列會失敗的狀況，所以先捲回到畫面最前頭，避免等下FIND不到
+                driver.execute_script(f"window.scrollTo(0, 0)")
                 driver.find_element_by_xpath(
                     '//a[@data-testid="UFI2ReactionsCount/root"]').click()
             except Exception as e:
@@ -169,7 +281,7 @@ def parse_post(username, password):
                 print(type(e), e)
                 print("click emoji tab fail!")
                 time.sleep(2)
-                driver.maximize_window()
+                # driver.maximize_window()
                 continue
             else:
                 # print(post_id)
@@ -177,8 +289,9 @@ def parse_post(username, password):
                 break
 
         # 確認popup已經出現後才讀取情緒
-        WebDriverWait(driver, 30).until(
+        WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, '//div[@class="_21ab"]')))
+        time.sleep(1)
         while True:
             try:
                 soupPopupEmoji = BeautifulSoup(
@@ -195,7 +308,7 @@ def parse_post(username, password):
                 print(type(e), e)
                 print("click emoji popup fail")
                 time.sleep(2)
-                driver.maximize_window()
+                # driver.maximize_window()
                 continue
             else:
                 # print("click emoji popup, clicked.")
@@ -241,6 +354,7 @@ def parse_post(username, password):
             "angryEmoji": angryEmoji,
             "cryEmoji": cryEmoji
         })
+
         #print('emojiDict', emojiDict)
         fbposts[post_id].update(emojiDict)
 
@@ -251,13 +365,20 @@ if __name__ == '__main__':
     '''
     程式參考：
     1. https://freelancerlife.info/zh/blog/python%E7%B6%B2%E8%B7%AF%E7%88%AC%E8%9F%B2%E6%87%89%E7%94%A8-facebook%E7%A4%BE%E5%9C%98%E6%88%90%E5%93%A1%E5%8F%83%E8%88%87%E5%BA%A6%E5%88%86%E6%9E%90/
+    2. 一位伙伴茹的CODE
 
-    程式說明：
-    1. 請先修改帳密，密碼檔請參考settings_sample.toml檔案，修改後另存為settings.toml
-    2. 確認geckodriver路徑
+    功能說明：
+    1. 進到特定的臉書社團後，會將該社團的動態消息往下捲12次
+    2. 蒐集動態消息中的貼文時間是近七天的
+    3. 蒐集貼文主體的情緒狀態
+    4. 蒐集貼文回文的內容
 
     todo:
     1. 社團採外部序號導入自動迴圈執行
+
+    程式說明：
+    1. 請先修改帳密，密碼檔請參考settings_sample.toml檔案，修改後另存為settings.toml
+    2. 確認webdriver路徑
 
     臉書環境：
     1. 此bot請在台灣繁體中文環境執行
@@ -273,9 +394,13 @@ if __name__ == '__main__':
 
     fbposts = {}
 
-    chrome_options = Options()  # 啟動無頭模式
-    chrome_options.add_argument('--headless')  # 規避google bug
+    chrome_options = Options()
+    chrome_options.add_argument('--headless')  # 啟動無頭模式
     chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--disable-infobars')
+    chrome_options.add_argument('--disable-extensions')
+    chrome_options.add_experimental_option(
+        'prefs', {'profile.default_content_setting_values.notifications': 2})
 
     driver = webdriver.Chrome(options=chrome_options)
     driver.get("http://www.facebook.com")
