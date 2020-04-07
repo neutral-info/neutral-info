@@ -5,6 +5,3 @@
 # change setting for elastic search
 # run this or add to /etc/sysctl.conf
 sysctl -w vm.max_map_count=262144
-
-docker pull sebp/elk
-docker-compose up
