@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import re
@@ -11,6 +12,8 @@ import datetime
 from datetime import timedelta, date
 import json
 from dynaconf import settings
+from PIL import Image
+import pytesseract
 
 
 def get_htmltext(username, password):
@@ -92,25 +95,32 @@ def parse_htmltext(htmltext, start_date, end_date):
         # 貼文相關資料
         if article.has_attr('id'):
             try:
+                # post_person = re.findall(
+                #     'title="(.{2,20})"><div class=', str(article))[0]
                 post_person = re.findall(
-                    'title="(.{2,20})"><div class=', str(article))[0]
+                    'ajaxify="(.*?)"', str(article))[0].split('&')[1].split('member_id=')[1]
             except:
                 continue
             post_time = int(re.findall('data-utime="(.*?)"', str(article))[0])
             post_id = re.findall('id="mall_post_(.*?):6:0"', str(article))[0]
+            # 如果是轉貼文，它的ID表示法有所不同
+            if len(post_id) > 20:
+                post_id = post_id.split(';')[2]
 
             # 取得貼文內文
             post_msg = article.select('div[data-testid="post_message"]')
             if len(post_msg) > 0:
                 post_message = post_msg[0].get_text()
             else:
-                post_message = ""
+                post_message = "Sticker"
 
+            # 檢查貼文間區間是否符合目標
             if post_time >= ustart_date and post_time <= uend_date:
                 post_ids.append(post_id)
                 post_times.append(post_time)
                 post_persons.append(post_person)
                 post_messages.append(post_message)
+
             try:
                 '''
                 取得某篇貼文的正文中，所有的情緒狀態的連結
@@ -158,6 +168,31 @@ def parse_post(username, password):
                    fbgroup + '/permalink/' + post_id)
         # time.sleep(5)
 
+        # 如果貼文沒有文字內容，就嘗試取得貼文照片
+        if fbposts[post_id]['post_message'] == 'Sticker':
+            soupArticle = BeautifulSoup(driver.page_source, 'html.parser')
+            postScaledImage = soupArticle.select('div[role="article"]')[
+                0].select('img[class="scaledImageFitWidth img"]')
+            #print('postScaledImage: {}'.format(postScaledImage))
+            # for postImg in re.findall('src="(.*?)"', str(postScaledImage)):
+            postImg = re.findall('src="(.*?)"', str(postScaledImage))
+            if len(postImg) > 1:
+                postImgUrl = postImg[0].replace('amp;', '')
+                # print('postImgUrl: {}'.format(postImgUrl))
+                try:
+                    requestImage = requests.get(postImgUrl, allow_redirects=True)
+                    open('temp.jpg', 'wb').write(requestImage.content)
+                    # OCR圖片取得其中的文字
+                    img = Image.open('temp.jpg')
+                    ocrText = pytesseract.image_to_string(img, lang='chi_tra')
+                    # print('img ocr', ocrText)
+                    fbposts[post_id]['post_message'] = ocrText
+                except Exception as e:
+                    # print(post_id)
+                    #print(type(e), e)
+                    #print("click reply comment fail!")
+                    time.sleep(2)
+
         # 建立一個函式用於檢測是否有『更多留言』或『檢視另XX則留言』出現
         def checkMoreComment():
             try:
@@ -169,7 +204,7 @@ def parse_post(username, password):
                         driver.find_element_by_xpath(
                             '//div[@class="_4swz _293g"]').click()
                     except Exception as e:
-                        #print(post_id)
+                        # print(post_id)
                         #print(type(e), e)
                         #print("click expand comment fail!")
                         time.sleep(2)
@@ -181,7 +216,7 @@ def parse_post(username, password):
                         checkMoreComment()
                         break
             except Exception as e:
-                #print(post_id)
+                # print(post_id)
                 #print(type(e), e)
                 #print("no expand comment link!")
                 time.sleep(2)
@@ -200,7 +235,7 @@ def parse_post(username, password):
                         driver.find_element_by_xpath(
                             '//span[@class="_4sso _4ssp"]').click()
                     except Exception as e:
-                        #print(post_id)
+                        # print(post_id)
                         #print(type(e), e)
                         #print("click reply comment fail!")
                         time.sleep(2)
@@ -212,7 +247,7 @@ def parse_post(username, password):
                         checkMoreReplyComment()
                         break
             except Exception as e:
-                #print(post_id)
+                # print(post_id)
                 #print(type(e), e)
                 #print("no reply comment link!")
                 time.sleep(2)
@@ -252,9 +287,9 @@ def parse_post(username, password):
                 #     CommentUserID, CommentContent, CommentTimestamp))
                 # 建立回文物件
                 postCommentContent = {
-                    'CommentUserID': CommentUserID,
-                    'CommentContent': CommentContent,
-                    'CommentTimestamp': CommentTimestamp
+                    'comment_person': CommentUserID,
+                    'comment_message': CommentContent,
+                    'comment_time': CommentTimestamp
                 }
                 postComment.append(postCommentContent)
 
@@ -372,9 +407,11 @@ if __name__ == '__main__':
     2. 蒐集動態消息中的貼文時間是近七天的
     3. 蒐集貼文主體的情緒狀態
     4. 蒐集貼文回文的內容
+    5. 產生一個JSON存放資料，檔名格式：fbGroupPost_{group id}_{bot finish timestamp}.json
 
     todo:
     1. 社團採外部序號導入自動迴圈執行
+    2. 貼文內容是圖片時要怎處理？直接解圖？下載存放就好？（放在哪？怎傳遞？）
 
     程式說明：
     1. 請先修改帳密，密碼檔請參考settings_sample.toml檔案，修改後另存為settings.toml
@@ -390,12 +427,13 @@ if __name__ == '__main__':
     password = settings.FBUSERPASSWORD
 
     # 欲抓取的臉書社團代碼
-    fbgroup = '1977528892479769'
+    fbgroup = '2065219296931017'
 
     fbposts = {}
 
     chrome_options = Options()
-    chrome_options.add_argument('--headless')  # 啟動無頭模式
+    if settings.HEADLESS != '':
+        chrome_options.add_argument(settings.HEADLESS)  # 啟動無頭模式
     chrome_options.add_argument('--disable-gpu')
     chrome_options.add_argument('--disable-infobars')
     chrome_options.add_argument('--disable-extensions')
@@ -422,8 +460,8 @@ if __name__ == '__main__':
     parse_post(username, password)
 
     # 將抓到的整個貼文資料寫成一個JSON檔
-    fbpostjsonfilename = "fbpost_{}.json".format(
-        datetime.datetime.now().timestamp())
+    fbpostjsonfilename = "fbGroupPost_{}_{}.json".format(
+        fbgroup, datetime.datetime.now().timestamp())
     print("0.2 將貼文資料寫入:{}".format(fbpostjsonfilename))
     with open(fbpostjsonfilename, "w", encoding='utf8') as f:
         json.dump(fbposts, f, ensure_ascii=False)
