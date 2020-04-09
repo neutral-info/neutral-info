@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import re
@@ -11,6 +12,8 @@ import datetime
 from datetime import timedelta, date
 import json
 from dynaconf import settings
+from PIL import Image
+import pytesseract
 
 
 def get_htmltext(username, password):
@@ -28,11 +31,12 @@ def get_htmltext(username, password):
     time.sleep(3)
 
     # 往下捲12次
-    print("1.3 往下捲12次")
+    print("1.3 預計往下捲12次")
     for i in range(12):
         y = 4000 * (i + 1)
         driver.execute_script(f"window.scrollTo(0, {y})")
-        time.sleep(2)
+        # time.sleep(2)
+        #print("1.3 往下捲第 {} 次".format(i))
 
     def ClickForMore():
         hrefBtns = driver.find_elements_by_tag_name('a')
@@ -91,25 +95,32 @@ def parse_htmltext(htmltext, start_date, end_date):
         # 貼文相關資料
         if article.has_attr('id'):
             try:
+                # post_person = re.findall(
+                #     'title="(.{2,20})"><div class=', str(article))[0]
                 post_person = re.findall(
-                    'title="(.{2,20})"><div class=', str(article))[0]
+                    'ajaxify="(.*?)"', str(article))[0].split('&')[1].split('member_id=')[1]
             except:
                 continue
             post_time = int(re.findall('data-utime="(.*?)"', str(article))[0])
             post_id = re.findall('id="mall_post_(.*?):6:0"', str(article))[0]
+            # 如果是轉貼文，它的ID表示法有所不同
+            if len(post_id) > 20:
+                post_id = post_id.split(';')[2]
 
             # 取得貼文內文
             post_msg = article.select('div[data-testid="post_message"]')
             if len(post_msg) > 0:
                 post_message = post_msg[0].get_text()
             else:
-                post_message = ""
+                post_message = "Sticker"
 
+            # 檢查貼文間區間是否符合目標
             if post_time >= ustart_date and post_time <= uend_date:
                 post_ids.append(post_id)
                 post_times.append(post_time)
                 post_persons.append(post_person)
                 post_messages.append(post_message)
+
             try:
                 '''
                 取得某篇貼文的正文中，所有的情緒狀態的連結
@@ -152,16 +163,152 @@ def parse_post(username, password):
     for post_id in fbposts.keys():
         postcount += 1
         print("3.1 {}/{} 貼文ID: {}".format(postcount,
-                                        len(fbposts), post_id), end="\r")
+                                          len(fbposts), post_id), end="\r")
         driver.get('http://www.facebook.com/groups/' +
                    fbgroup + '/permalink/' + post_id)
         # time.sleep(5)
 
-        # 等待情續列的出現，出現後則點選
-        WebDriverWait(driver, 30).until(EC.presence_of_element_located(
+        # 如果貼文沒有文字內容，就嘗試取得貼文照片
+        if fbposts[post_id]['post_message'] == 'Sticker':
+            soupArticle = BeautifulSoup(driver.page_source, 'html.parser')
+            postScaledImage = soupArticle.select('div[role="article"]')[
+                0].select('img[class="scaledImageFitWidth img"]')
+            #print('postScaledImage: {}'.format(postScaledImage))
+            # for postImg in re.findall('src="(.*?)"', str(postScaledImage)):
+            postImg = re.findall('src="(.*?)"', str(postScaledImage))
+            if len(postImg) > 1:
+                postImgUrl = postImg[0].replace('amp;', '')
+                # print('postImgUrl: {}'.format(postImgUrl))
+                try:
+                    requestImage = requests.get(postImgUrl, allow_redirects=True)
+                    open('temp.jpg', 'wb').write(requestImage.content)
+                    # OCR圖片取得其中的文字
+                    img = Image.open('temp.jpg')
+                    ocrText = pytesseract.image_to_string(img, lang='chi_tra')
+                    # print('img ocr', ocrText)
+                    fbposts[post_id]['post_message'] = ocrText
+                except Exception as e:
+                    # print(post_id)
+                    #print(type(e), e)
+                    #print("click reply comment fail!")
+                    time.sleep(2)
+
+        # 建立一個函式用於檢測是否有『更多留言』或『檢視另XX則留言』出現
+        def checkMoreComment():
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//div[@class="_4swz _293g"]')))
+                time.sleep(1)
+                while True:
+                    try:
+                        driver.find_element_by_xpath(
+                            '//div[@class="_4swz _293g"]').click()
+                    except Exception as e:
+                        # print(post_id)
+                        #print(type(e), e)
+                        #print("click expand comment fail!")
+                        time.sleep(2)
+                        # driver.maximize_window()
+                        break
+                    else:
+                        # print(post_id)
+                        #print("click exapnd comment sucess.")
+                        checkMoreComment()
+                        break
+            except Exception as e:
+                # print(post_id)
+                #print(type(e), e)
+                #print("no expand comment link!")
+                time.sleep(2)
+                # driver.maximize_window()
+
+        checkMoreComment()
+
+        # 建立一個函式用於檢測是否留言中是否還有回留言『XX則回覆』出現
+        def checkMoreReplyComment():
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.XPATH, '//span[@class="_4sso _4ssp"]')))
+                time.sleep(1)
+                while True:
+                    try:
+                        driver.find_element_by_xpath(
+                            '//span[@class="_4sso _4ssp"]').click()
+                    except Exception as e:
+                        # print(post_id)
+                        #print(type(e), e)
+                        #print("click reply comment fail!")
+                        time.sleep(2)
+                        # driver.maximize_window()
+                        break
+                    else:
+                        # print(post_id)
+                        #print("click reply comment sucess.")
+                        checkMoreReplyComment()
+                        break
+            except Exception as e:
+                # print(post_id)
+                #print(type(e), e)
+                #print("no reply comment link!")
+                time.sleep(2)
+                # driver.maximize_window()
+
+        checkMoreReplyComment()
+
+        # 讀取回文內容
+        soupSomeArticle = BeautifulSoup(driver.page_source, 'html.parser')
+        postComment = []
+        try:
+            # aria-label="留言"
+            listComments = soupSomeArticle.findAll(
+                'div', {'aria-label': '留言'})
+            for listComment in listComments:
+                try:
+                    # CommentUser = listComment.find(
+                    #     'a', {'class': '_6qw4'}).text
+                    CommentUserID = re.findall(
+                        'data-hovercard="(.*?)"', str(listComment))[0].split('id=')[1]
+                except:
+                    CommentUserID = 'error'
+
+                try:
+                    CommentContent = listComment.find(
+                        'span', {'dir': 'ltr'}).text
+                except:
+                    CommentContent = 'Sticker'
+
+                try:
+                    CommentTimestamp = re.findall(
+                        'data-utime="(.*?)"', str(listComment))[0]
+                except:
+                    CommentTimestamp = 'error'
+
+                # print('CommentUserID:{}, CommentContent:{}, CommentTimestamp:{}'.format(
+                #     CommentUserID, CommentContent, CommentTimestamp))
+                # 建立回文物件
+                postCommentContent = {
+                    'comment_person': CommentUserID,
+                    'comment_message': CommentContent,
+                    'comment_time': CommentTimestamp
+                }
+                postComment.append(postCommentContent)
+
+            fbposts[post_id].update({
+                'postComment': postComment
+            })
+
+        except Exception as e:
+            print(type(e), e)
+            print("{} read comment fail!".format(post_id))
+            time.sleep(2)
+
+        # 等待情緒列的出現，出現後則點選
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located(
             (By.XPATH, '//a[@data-testid="UFI2ReactionsCount/root"]')))
         while True:
             try:
+                # 因應往下捲蒐集回應的動作，導致偵測情緒列會失敗的狀況，所以先捲回到畫面最前頭，避免等下FIND不到
+                driver.execute_script(f"window.scrollTo(0, 0)")
                 driver.find_element_by_xpath(
                     '//a[@data-testid="UFI2ReactionsCount/root"]').click()
             except Exception as e:
@@ -169,7 +316,7 @@ def parse_post(username, password):
                 print(type(e), e)
                 print("click emoji tab fail!")
                 time.sleep(2)
-                driver.maximize_window()
+                # driver.maximize_window()
                 continue
             else:
                 # print(post_id)
@@ -177,8 +324,9 @@ def parse_post(username, password):
                 break
 
         # 確認popup已經出現後才讀取情緒
-        WebDriverWait(driver, 30).until(
+        WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, '//div[@class="_21ab"]')))
+        time.sleep(1)
         while True:
             try:
                 soupPopupEmoji = BeautifulSoup(
@@ -195,7 +343,7 @@ def parse_post(username, password):
                 print(type(e), e)
                 print("click emoji popup fail")
                 time.sleep(2)
-                driver.maximize_window()
+                # driver.maximize_window()
                 continue
             else:
                 # print("click emoji popup, clicked.")
@@ -241,6 +389,7 @@ def parse_post(username, password):
             "angryEmoji": angryEmoji,
             "cryEmoji": cryEmoji
         })
+
         #print('emojiDict', emojiDict)
         fbposts[post_id].update(emojiDict)
 
@@ -251,13 +400,22 @@ if __name__ == '__main__':
     '''
     程式參考：
     1. https://freelancerlife.info/zh/blog/python%E7%B6%B2%E8%B7%AF%E7%88%AC%E8%9F%B2%E6%87%89%E7%94%A8-facebook%E7%A4%BE%E5%9C%98%E6%88%90%E5%93%A1%E5%8F%83%E8%88%87%E5%BA%A6%E5%88%86%E6%9E%90/
+    2. 一位伙伴茹的CODE
 
-    程式說明：
-    1. 請先修改帳密，密碼檔請參考settings_sample.toml檔案，修改後另存為settings.toml
-    2. 確認geckodriver路徑
+    功能說明：
+    1. 進到特定的臉書社團後，會將該社團的動態消息往下捲12次
+    2. 蒐集動態消息中的貼文時間是近七天的
+    3. 蒐集貼文主體的情緒狀態
+    4. 蒐集貼文回文的內容
+    5. 產生一個JSON存放資料，檔名格式：fbGroupPost_{group id}_{bot finish timestamp}.json
 
     todo:
     1. 社團採外部序號導入自動迴圈執行
+    2. 貼文內容是圖片時要怎處理？直接解圖？下載存放就好？（放在哪？怎傳遞？）
+
+    程式說明：
+    1. 請先修改帳密，密碼檔請參考settings_sample.toml檔案，修改後另存為settings.toml
+    2. 確認webdriver路徑
 
     臉書環境：
     1. 此bot請在台灣繁體中文環境執行
@@ -269,13 +427,18 @@ if __name__ == '__main__':
     password = settings.FBUSERPASSWORD
 
     # 欲抓取的臉書社團代碼
-    fbgroup = '1977528892479769'
+    fbgroup = '2065219296931017'
 
     fbposts = {}
 
-    chrome_options = Options()  # 啟動無頭模式
-    chrome_options.add_argument('--headless')  # 規避google bug
+    chrome_options = Options()
+    if settings.HEADLESS != '':
+        chrome_options.add_argument(settings.HEADLESS)  # 啟動無頭模式
     chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--disable-infobars')
+    chrome_options.add_argument('--disable-extensions')
+    chrome_options.add_experimental_option(
+        'prefs', {'profile.default_content_setting_values.notifications': 2})
 
     driver = webdriver.Chrome(options=chrome_options)
     driver.get("http://www.facebook.com")
@@ -297,8 +460,8 @@ if __name__ == '__main__':
     parse_post(username, password)
 
     # 將抓到的整個貼文資料寫成一個JSON檔
-    fbpostjsonfilename = "fbpost_{}.json".format(
-        datetime.datetime.now().timestamp())
+    fbpostjsonfilename = "fbGroupPost_{}_{}.json".format(
+        fbgroup, datetime.datetime.now().timestamp())
     print("0.2 將貼文資料寫入:{}".format(fbpostjsonfilename))
     with open(fbpostjsonfilename, "w", encoding='utf8') as f:
         json.dump(fbposts, f, ensure_ascii=False)

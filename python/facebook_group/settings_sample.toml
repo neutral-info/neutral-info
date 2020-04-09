@@ -1,0 +1,4 @@
+[default]
+fbusername = "username"
+fbuserpassword = "password"
+headless = "--headless"
