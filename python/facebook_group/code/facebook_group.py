@@ -184,7 +184,7 @@ def parse_post(username, password):
                     open('temp.jpg', 'wb').write(requestImage.content)
                     # OCR圖片取得其中的文字
                     img = Image.open('temp.jpg')
-                    ocrText = pytesseract.image_to_string(img, lang='chi_tra')
+                    ocrText = pytesseract.image_to_string(img, lang='chi_tra', config=settings.TESSDATA_DIR_CONFIG, nice=0, timeout=0)
                     # print('img ocr', ocrText)
                     fbposts[post_id]['post_message'] = ocrText
                 except Exception as e:
@@ -437,6 +437,9 @@ if __name__ == '__main__':
     chrome_options.add_argument('--disable-gpu')
     chrome_options.add_argument('--disable-infobars')
     chrome_options.add_argument('--disable-extensions')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument("--remote-debugging-port=9222")
     chrome_options.add_experimental_option(
         'prefs', {'profile.default_content_setting_values.notifications': 2})
 
@@ -460,7 +463,7 @@ if __name__ == '__main__':
     parse_post(username, password)
 
     # 將抓到的整個貼文資料寫成一個JSON檔
-    fbpostjsonfilename = "fbGroupPost_{}_{}.json".format(
+    fbpostjsonfilename = "./output/fbGroupPost_{}_{}.json".format(
         fbgroup, datetime.datetime.now().timestamp())
     print("0.2 將貼文資料寫入:{}".format(fbpostjsonfilename))
     with open(fbpostjsonfilename, "w", encoding='utf8') as f:
