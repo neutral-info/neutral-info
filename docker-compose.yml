@@ -50,6 +50,8 @@ services:
         source: ./filebeat/filebeat.yml
         target: /usr/share/filebeat/filebeat.yml
         read_only: true
+      # 爬蟲資料放置區
+        - ~/botdata:/botdata
     networks:
       - elk
     depends_on:

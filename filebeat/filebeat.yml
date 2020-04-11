@@ -1,8 +1,16 @@
 filebeat.inputs:
+  # facebookgroupbot input
   - type: log
-    enabled: true
-    paths:
-      - /var/log/*.log
+  enabled: true
+  paths:
+    - /botdata/fbGroupPost*.json
+  json.keys_under_root: false
+  json.add_error_key: true
+  json.document_id: sys_id
+  json.message_key: sys_id
+  tags: ["json","bot"]
+  fields:
+    app_id: facebookgroupbot
 output.elasticsearch:
   hosts: ["elasticsearch:9200"]
   username: "elastic"
