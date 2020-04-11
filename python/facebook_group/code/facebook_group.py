@@ -134,9 +134,12 @@ def parse_htmltext(htmltext, start_date, end_date):
                 # print(re.findall(
                 #     '"(/ufi/reaction/profile/browser/\?.*?)"', str(article))[0])
 
-                # 貼文JSON物件
+                # 貼文基本JSON物件
                 postjson = {}
                 postjson.setdefault(post_id, {
+                    "sys_id": 'facebookgroup_' + fbgroup + '_' + post_id,
+                    "sys_type": 'facebookgroup',
+                    "board_id": fbgroup,
                     "post_id": post_id,
                     "post_time": post_time,
                     "post_person": post_person,
@@ -180,11 +183,13 @@ def parse_post(username, password):
                 postImgUrl = postImg[0].replace('amp;', '')
                 # print('postImgUrl: {}'.format(postImgUrl))
                 try:
-                    requestImage = requests.get(postImgUrl, allow_redirects=True)
+                    requestImage = requests.get(
+                        postImgUrl, allow_redirects=True)
                     open('temp.jpg', 'wb').write(requestImage.content)
                     # OCR圖片取得其中的文字
                     img = Image.open('temp.jpg')
-                    ocrText = pytesseract.image_to_string(img, lang='chi_tra')
+                    ocrText = pytesseract.image_to_string(
+                        img, lang='chi_tra', config=settings.TESSDATA_DIR_CONFIG, nice=0, timeout=0)
                     # print('img ocr', ocrText)
                     fbposts[post_id]['post_message'] = ocrText
                 except Exception as e:
@@ -437,6 +442,9 @@ if __name__ == '__main__':
     chrome_options.add_argument('--disable-gpu')
     chrome_options.add_argument('--disable-infobars')
     chrome_options.add_argument('--disable-extensions')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument("--remote-debugging-port=9222")
     chrome_options.add_experimental_option(
         'prefs', {'profile.default_content_setting_values.notifications': 2})
 
@@ -460,11 +468,22 @@ if __name__ == '__main__':
     parse_post(username, password)
 
     # 將抓到的整個貼文資料寫成一個JSON檔
-    fbpostjsonfilename = "fbGroupPost_{}_{}.json".format(
+    fbpostjsonfilename = "./output/fbGroupPost_{}_{}.json".format(
         fbgroup, datetime.datetime.now().timestamp())
     print("0.2 將貼文資料寫入:{}".format(fbpostjsonfilename))
-    with open(fbpostjsonfilename, "w", encoding='utf8') as f:
-        json.dump(fbposts, f, ensure_ascii=False)
+
+    if fbposts:  # a check to determine that our array is not empty
+        print('fbposts',fbposts)
+        print('-----------------------')
+        #print('fbposts',json.dumps(fbposts, ensure_ascii=False))
+        with open(fbpostjsonfilename, 'w', encoding='utf8') as f:
+            # 調整成特殊JSON格式供filebeat使用
+            if fbposts:  # a check to determine that our array is not empty
+                for fbpost in fbposts.values():  # now loop through your elements one by one
+                    json.dump(fbpost, f, ensure_ascii=False)  # JSON encode each element and write it to the file
+                    f.write(",\n")  # close the element entry with a comma and a new line
+                #f.seek(-3, 1)  # go back to the last separator to clear out the comma
+            f.truncate()
 
     # 印出易閱讀的JSON格式
     #print(json.dumps(fbposts, indent=2, sort_keys=True, ensure_ascii=False))
