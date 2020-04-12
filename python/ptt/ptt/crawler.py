@@ -64,9 +64,9 @@ class PttWebCrawler(object):
                 self.parse_article(article_id, board)
 
     def parse_articles(self, start, end, board, path=".", timeout=3):
-        filename = board + "-" + str(start) + "-" + str(end) + ".json"
+        filename = board + "-" + str(start) + "-" + str(end) + ".log"
         filename = os.path.join(path, filename)
-        self.store(filename, u'{"articles": [', "w")
+        print("filename", filename)
         for i in range(end - start + 1):
             index = start + i
             print("Processing index:", str(index))
@@ -91,12 +91,11 @@ class PttWebCrawler(object):
                         self.store(filename, self.parse(link, article_id, board), "a")
                     else:
                         self.store(
-                            filename, self.parse(link, article_id, board) + ",\n", "a"
+                            filename, self.parse(link, article_id, board), "a"
                         )
                 except Exception:
                     pass
             time.sleep(0.1)
-        self.store(filename, u"]}", "a")
         return filename
 
     def parse_article(self, article_id, board, path="."):
@@ -252,7 +251,7 @@ class PttWebCrawler(object):
     @staticmethod
     def store(filename, data, mode):
         with codecs.open(filename, mode, encoding="utf-8") as f:
-            f.write(data)
+            f.write(data+"\n")
 
     @staticmethod
     def get(filename, mode="r"):

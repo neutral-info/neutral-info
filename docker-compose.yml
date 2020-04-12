@@ -50,11 +50,26 @@ services:
         source: ./filebeat/filebeat.yml
         target: /usr/share/filebeat/filebeat.yml
         read_only: true
+      - type: volumes
+        source: ptt
+        target: /var/log/filebeat/ptt
     networks:
       - elk
     depends_on:
       - elasticsearch
       - kibana
+
+  ptt:
+    build:
+      context: python/ptt/
+    volumes:
+      - type: volumes
+        source: ptt
+        target: /app/data
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
 
 networks:
   elk:
@@ -62,3 +77,4 @@ networks:
 
 volumes:
   elasticsearch:
+  ptt:
