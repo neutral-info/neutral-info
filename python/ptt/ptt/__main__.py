@@ -1,12 +1,14 @@
 
 import time
 from datetime import datetime
+from os import makedirs
 
 import click
 import schedule
 
 from crawler import PttWebCrawler
 
+DATA_PATH="./data"
 
 def heart_beat():
     print(f"Alive at {datetime.now()}")
@@ -15,9 +17,10 @@ def heart_beat():
 def run():
     crawler = PttWebCrawler(as_lib=True)
     last_page = crawler.getLastPage('Gossiping')
-
-    crawler.parse_articles(last_page, last_page, "Gossiping")  # crawl single page for testing
-    # crawler.parse_articles(last_page - 150, last_page, "Gossiping")
+    makedirs(DATA_PATH, exist_ok=True)
+    crawler.parse_articles(last_page - 150, last_page, "Gossiping", path=DATA_PATH)
+    crawler.parse_articles(last_page - 10, last_page, "Stock", path=DATA_PATH)
+    crawler.parse_articles(last_page - 20, last_page, "C_Chat", path=DATA_PATH)
 
 
 @click.command()
