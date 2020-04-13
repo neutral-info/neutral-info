@@ -18,8 +18,9 @@ def run():
     crawler = PttWebCrawler(as_lib=True)
     last_page = crawler.getLastPage('Gossiping')
     makedirs(DATA_PATH, exist_ok=True)
-    crawler.parse_articles(last_page, last_page, "Gossiping", path=DATA_PATH)  # crawl single page for testing
-    # crawler.parse_articles(last_page - 150, last_page, "Gossiping")
+    crawler.parse_articles(last_page - 150, last_page, "Gossiping", path=DATA_PATH)
+    crawler.parse_articles(last_page - 10, last_page, "Stock", path=DATA_PATH)
+    crawler.parse_articles(last_page - 20, last_page, "C_Chat", path=DATA_PATH)
 
 
 @click.command()
