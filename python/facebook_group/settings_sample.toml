@@ -2,3 +2,4 @@
 fbusername = "username"
 fbuserpassword = "password"
 headless = "--headless"
+tessdata_dir_config = '--tessdata-dir "./tessdata"'
