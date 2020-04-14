@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.7
 
 # install google chrome
 RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
@@ -16,6 +16,7 @@ RUN apt-get install -y tesseract-ocr-chi-tra
 
 # upgrade pip
 RUN pip install --upgrade pip
+RUN pip install pipenv
 
 # set display port to avoid crash
 ENV DISPLAY=:99
@@ -23,10 +24,10 @@ ENV DISPLAY=:99
 # install selenium
 RUN pip install selenium
 
-# facebook bot need
+# facebook crawler need
 WORKDIR /app
 COPY . .
-RUN pip install -r requirements.txt
+RUN pipenv install --system --deploy --ignore-pipfile
 
-# run bot
-CMD ["python", "facebook_group.py", "-u"] 
+# run crawler bot every 2 hours
+CMD ["python", "facebook_group", "--schedule_arg"] 
