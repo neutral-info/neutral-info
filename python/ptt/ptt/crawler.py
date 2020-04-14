@@ -90,9 +90,7 @@ class PttWebCrawler(object):
                     if div == divs[-1] and i == end - start:  # last div of last page
                         self.store(filename, self.parse(link, article_id, board), "a")
                     else:
-                        self.store(
-                            filename, self.parse(link, article_id, board), "a"
-                        )
+                        self.store(filename, self.parse(link, article_id, board), "a")
                 except Exception:
                     pass
             time.sleep(0.1)
@@ -251,7 +249,7 @@ class PttWebCrawler(object):
     @staticmethod
     def store(filename, data, mode):
         with codecs.open(filename, mode, encoding="utf-8") as f:
-            f.write(data+"\n")
+            f.write(data + "\n")
 
     @staticmethod
     def get(filename, mode="r"):

@@ -5,4 +5,5 @@ RUN pip install pipenv
 WORKDIR /app
 COPY . .
 RUN pipenv install --system --deploy --ignore-pipfile
-CMD ["python", "ptt", "--schedule_arg"]
+CMD ["python", "ptt"]
+# CMD ["python", "ptt", "--schedule_arg"]
