@@ -3,6 +3,7 @@ filebeat.inputs:
     enabled: true
     paths:
       - /var/log/filebeat/ptt/*.log
+      - /var/log/filebeat/facebook_group/*.log
 output.elasticsearch:
   hosts: ["elasticsearch:9200"]
   username: "elastic"
