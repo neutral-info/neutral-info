@@ -53,6 +53,9 @@ services:
       - type: volumes
         source: ptt
         target: /var/log/filebeat/ptt
+      - type: volumes
+        source: facebook_group
+        target: /var/log/filebeat/facebook_group
     networks:
       - elk
     depends_on:
@@ -71,6 +74,18 @@ services:
     depends_on:
       - elasticsearch
 
+  facebook_group:
+    build:
+      context: python/facebook_group/
+    volumes:
+      - type: volumes
+        source: facebook_group
+        target: /app/data
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
 networks:
   elk:
     driver: bridge
@@ -78,3 +93,4 @@ networks:
 volumes:
   elasticsearch:
   ptt:
+  facebook_group:
