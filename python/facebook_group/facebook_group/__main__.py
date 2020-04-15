@@ -16,9 +16,9 @@ def heart_beat():
 
 
 def run():
-    crawler = FacebookGroupCrawler()
+    # crawler = FacebookGroupCrawler()
     makedirs(DATA_PATH, exist_ok=True)
-    crawler.start_Crawler('2065219296931017', DATA_PATH)
+    FacebookGroupCrawler().start_Crawler('2065219296931017', DATA_PATH)
 
 
 @click.command()
