@@ -21,9 +21,6 @@ RUN pip install pipenv
 # set display port to avoid crash
 ENV DISPLAY=:99
 
-# install selenium
-RUN pip install selenium
-
 # facebook crawler need
 WORKDIR /app
 COPY . .

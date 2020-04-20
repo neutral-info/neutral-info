@@ -79,27 +79,8 @@ class FacebookGroupCrawler(object):
             fbgroup, datetime.datetime.now().timestamp()
         )
         print("0.2 將貼文資料寫入:{}".format(fbpostjsonfilename))
-
-        if self.fbposts:  # a check to determine that our array is not empty
-            # print("fbposts", fbposts)
-            # print("-----------------------")
-            # print('fbposts',json.dumps(fbposts, ensure_ascii=False))
-            with open(fbpostjsonfilename, "w", encoding="utf8") as f:
-                # 調整成特殊JSON格式供filebeat使用
-                if self.fbposts:  # a check to determine that our array is not empty
-                    for (
-                        fbpost
-                    ) in (
-                        self.fbposts.values()
-                    ):  # now loop through your elements one by one
-                        json.dump(
-                            fbpost, f, ensure_ascii=False
-                        )  # JSON encode each element and write it to the file
-                        f.write(
-                            ",\n"
-                        )  # close the element entry with a comma and a new line
-                    # f.seek(-3, 1)  # go back to the last separator to clear out the comma
-                f.truncate()
+        with open(fbpostjsonfilename, "w", encoding='utf8') as f:
+            json.dump(fbposts, f, ensure_ascii=False)
 
         # 印出易閱讀的JSON格式
         # print(json.dumps(fbposts, indent=2, sort_keys=True, ensure_ascii=False))
@@ -117,9 +98,10 @@ class FacebookGroupCrawler(object):
         # 往下捲12次
         print("1.3 預計往下捲12次")
         for i in range(12):
+            if i > 0:
+                time.sleep(2)
             y = 4000 * (i + 1)
             self.driver.execute_script(f"window.scrollTo(0, {y})")
-            # time.sleep(2)
             # print("1.3 往下捲第 {} 次".format(i))
 
         def ClickForMore():
