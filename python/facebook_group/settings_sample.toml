@@ -3,3 +3,5 @@ fbusername = "username"
 fbuserpassword = "password"
 headless = "--headless"
 tessdata_dir_config = '--tessdata-dir "./tessdata"'
+targets = ["2065219296931017","589622428215800"]
+data_path = "./data"

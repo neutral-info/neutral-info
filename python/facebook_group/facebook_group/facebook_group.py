@@ -20,9 +20,6 @@ class FacebookGroupCrawler(object):
     username = settings.FBUSERNAME
     password = settings.FBUSERPASSWORD
 
-    # 欲抓取的臉書社團代碼
-    # fbgroup = "2065219296931017"
-
     fbposts: dict = {}
     fbgroup = ""
     data_path = ""
@@ -44,11 +41,16 @@ class FacebookGroupCrawler(object):
     driver.get("http://www.facebook.com")
     time.sleep(3)
 
-    print("1.1 登入臉書")
-    driver.find_element_by_id("email").send_keys(username)
-    driver.find_element_by_id("pass").send_keys(password)
-    driver.find_element_by_id("loginbutton").click()
-    time.sleep(3)
+    def __init__(self, cmdline=None, as_lib=False):
+
+        print("1.1 登入臉書")
+        element_login_username = (By.ID, "email")
+        element_login_password = (By.ID, "pass")
+        element_login_button = (By.ID, "loginbutton")
+        self.driver.find_element(*element_login_username).send_keys(self.username)
+        self.driver.find_element(*element_login_password).send_keys(self.password)
+        self.driver.find_element(*element_login_button).click()
+        time.sleep(3)
 
     def start_Crawler(self, fbgroup, data_path):
         # 取得執行爬取的社團
@@ -79,12 +81,8 @@ class FacebookGroupCrawler(object):
             fbgroup, datetime.datetime.now().timestamp()
         )
         print("0.2 將貼文資料寫入:{}".format(fbpostjsonfilename))
-        with open(fbpostjsonfilename, "w", encoding='utf8') as f:
-            json.dump(fbposts, f, ensure_ascii=False)
-
-        # 印出易閱讀的JSON格式
-        # print(json.dumps(fbposts, indent=2, sort_keys=True, ensure_ascii=False))
-        # print(len(fbposts))
+        with open(fbpostjsonfilename, "w", encoding="utf8") as f:
+            json.dump(self.fbposts, f, ensure_ascii=False)
 
     def get_htmltext(self, username, password):
         """
@@ -102,30 +100,11 @@ class FacebookGroupCrawler(object):
                 time.sleep(2)
             y = 4000 * (i + 1)
             self.driver.execute_script(f"window.scrollTo(0, {y})")
-            # print("1.3 往下捲第 {} 次".format(i))
-
-        def ClickForMore():
-            hrefBtns = self.driver.find_elements_by_tag_name("a")
-            for btn in hrefBtns:
-                try:
-                    s = btn.get_attribute("data-testid")
-                except Exception:
-                    continue
-                if (
-                    s == "UFI2CommentsPagerRenderer/pager_depth_1"
-                    or s == "UFI2CommentsPagerRenderer/pager_depth_0"
-                ):
-                    try:
-                        btn.click()
-                        time.sleep(1)
-                    except Exception:
-                        continue
-
-        ClickForMore()
-        ClickForMore()
+            print(
+                "1.3 往下捲第 {} 次".format(i), end="\r",
+            )
 
         htmltext = self.driver.page_source
-        # driver.close()
         print("1.4 已取得往下捲12次後在『動態消息』的貼文")
 
         return htmltext
@@ -142,7 +121,6 @@ class FacebookGroupCrawler(object):
         post_persons = []
         post_messages = []
         post_times = []
-        good_urllist = []
         ustart_date = start_date.timestamp()
         uend_date = end_date.timestamp()
         soup = BeautifulSoup(htmltext, "html.parser")
@@ -163,8 +141,6 @@ class FacebookGroupCrawler(object):
             # 貼文相關資料
             if article.has_attr("id"):
                 try:
-                    # post_person = re.findall(
-                    #     'title="(.{2,20})"><div class=', str(article))[0]
                     post_person = (
                         re.findall('ajaxify="(.*?)"', str(article))[0]
                         .split("&")[1]
@@ -193,21 +169,6 @@ class FacebookGroupCrawler(object):
                     post_messages.append(post_message)
 
                 try:
-                    """
-                    取得某篇貼文的正文中，所有的情緒狀態的連結
-                    如果情緒太多，會分多個頁面儲存
-                    目前未用到，因為實測後，發現如果全部連結都拋進後，
-                    再一一點開『更多』會導致臉書禁止存取，
-                    初判應該導致太多連線
-                    """
-                    good_urllist.append(
-                        re.findall(
-                            '"(/ufi/reaction/profile/browser/\?.*?)"', str(article)
-                        )[0]
-                    )
-                    # print(re.findall(
-                    #     '"(/ufi/reaction/profile/browser/\?.*?)"', str(article))[0])
-
                     # 貼文基本JSON物件
                     postjson = {}
                     postjson.setdefault(
@@ -220,7 +181,6 @@ class FacebookGroupCrawler(object):
                             "post_time": post_time,
                             "post_person": post_person,
                             "post_message": post_message,
-                            # "good_urllists": good_urllist
                         },
                     )
                     self.fbposts.update(postjson)
@@ -251,7 +211,6 @@ class FacebookGroupCrawler(object):
                 + "/permalink/"
                 + post_id
             )
-            # time.sleep(5)
 
             # 如果貼文沒有文字內容，就嘗試取得貼文照片
             if self.fbposts[post_id]["post_message"] == "Sticker":
@@ -259,12 +218,9 @@ class FacebookGroupCrawler(object):
                 postScaledImage = soupArticle.select('div[role="article"]')[0].select(
                     'img[class="scaledImageFitWidth img"]'
                 )
-                # print('postScaledImage: {}'.format(postScaledImage))
-                # for postImg in re.findall('src="(.*?)"', str(postScaledImage)):
                 postImg = re.findall('src="(.*?)"', str(postScaledImage))
                 if len(postImg) > 1:
                     postImgUrl = postImg[0].replace("amp;", "")
-                    # print('postImgUrl: {}'.format(postImgUrl))
                     try:
                         requestImage = requests.get(postImgUrl, allow_redirects=True)
                         open("temp.jpg", "wb").write(requestImage.content)
@@ -277,18 +233,17 @@ class FacebookGroupCrawler(object):
                             nice=0,
                             timeout=0,
                         )
-                        # print('img ocr', ocrText)
                         self.fbposts[post_id]["post_message"] = ocrText
-                    except Exception:
-                        # print(post_id)
-                        # print(type(e), e)
-                        # print("click reply comment fail!")
+                    except Exception as e:
+                        print(
+                            "\nload {} post image fail: {}".format(post_id, e.args[0])
+                        )
                         time.sleep(2)
 
             # 建立一個函式用於檢測是否有『更多留言』或『檢視另XX則留言』出現
             def checkMoreComment():
                 try:
-                    WebDriverWait(self.driver, 10).until(
+                    WebDriverWait(self.driver, 5).until(
                         EC.presence_of_element_located(
                             (By.XPATH, '//div[@class="_4swz _293g"]')
                         )
@@ -296,34 +251,33 @@ class FacebookGroupCrawler(object):
                     time.sleep(1)
                     while True:
                         try:
-                            self.driver.find_element_by_xpath(
-                                '//div[@class="_4swz _293g"]'
-                            ).click()
-                        except Exception:
-                            # print(post_id)
-                            # print(type(e), e)
-                            # print("click expand comment fail!")
+                            element_morecomment = (
+                                By.XPATH,
+                                '//div[@class="_4swz _293g"]',
+                            )
+                            self.driver.find_element(*element_morecomment).click()
+                        except Exception as e:
+                            # 直到找不到comment的連結才跳出
+                            print(
+                                "\nclick {} expand comment fail: {}".format(
+                                    post_id, e.args[0]
+                                )
+                            )
                             time.sleep(2)
-                            # driver.maximize_window()
                             break
                         else:
-                            # print(post_id)
-                            # print("click exapnd comment sucess.")
                             checkMoreComment()
                             break
-                except Exception:
-                    # print(post_id)
-                    # print(type(e), e)
-                    # print("no expand comment link!")
+                except Exception as e:
+                    print("\n{} no expand comment link: {}".format(post_id, e.args[0]))
                     time.sleep(2)
-                    # driver.maximize_window()
 
             checkMoreComment()
 
             # 建立一個函式用於檢測是否留言中是否還有回留言『XX則回覆』出現
             def checkMoreReplyComment():
                 try:
-                    WebDriverWait(self.driver, 10).until(
+                    WebDriverWait(self.driver, 5).until(
                         EC.presence_of_element_located(
                             (By.XPATH, '//span[@class="_4sso _4ssp"]')
                         )
@@ -331,27 +285,25 @@ class FacebookGroupCrawler(object):
                     time.sleep(1)
                     while True:
                         try:
-                            self.driver.find_element_by_xpath(
-                                '//span[@class="_4sso _4ssp"]'
-                            ).click()
-                        except Exception:
-                            # print(post_id)
-                            # print(type(e), e)
-                            # print("click reply comment fail!")
+                            element_morereplycomment = (
+                                By.XPATH,
+                                '//span[@class="_4sso _4ssp"]',
+                            )
+                            self.driver.find_element(*element_morereplycomment).click()
+                        except Exception as e:
+                            print(
+                                "\nclick {} reply comment fail: {}".format(
+                                    post_id, e.args[0]
+                                )
+                            )
                             time.sleep(2)
-                            # driver.maximize_window()
                             break
                         else:
-                            # print(post_id)
-                            # print("click reply comment sucess.")
                             checkMoreReplyComment()
                             break
-                except Exception:
-                    # print(post_id)
-                    # print(type(e), e)
-                    # print("no reply comment link!")
+                except Exception as e:
+                    print("\n{} no reply comment link: {}".format(post_id, e.args[0]))
                     time.sleep(2)
-                    # driver.maximize_window()
 
             checkMoreReplyComment()
 
@@ -363,8 +315,6 @@ class FacebookGroupCrawler(object):
                 listComments = soupSomeArticle.findAll("div", {"aria-label": "留言"})
                 for listComment in listComments:
                     try:
-                        # CommentUser = listComment.find(
-                        #     'a', {'class': '_6qw4'}).text
                         CommentUserID = re.findall(
                             'data-hovercard="(.*?)"', str(listComment)
                         )[0].split("id=")[1]
@@ -383,8 +333,6 @@ class FacebookGroupCrawler(object):
                     except Exception:
                         CommentTimestamp = "error"
 
-                    # print('CommentUserID:{}, CommentContent:{}, CommentTimestamp:{}'.format(
-                    #     CommentUserID, CommentContent, CommentTimestamp))
                     # 建立回文物件
                     postCommentContent = {
                         "comment_person": CommentUserID,
@@ -396,62 +344,59 @@ class FacebookGroupCrawler(object):
                 self.fbposts[post_id].update({"postComment": postComment})
 
             except Exception as e:
-                print(type(e), e)
-                print("{} read comment fail!".format(post_id))
+                print("\n{} read comment fail: {}".format(post_id, e.args[0]))
                 time.sleep(2)
 
-            # 等待情緒列的出現，出現後則點選
-            WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.XPATH, '//a[@data-testid="UFI2ReactionsCount/root"]')
-                )
-            )
-            while True:
-                try:
-                    # 因應往下捲蒐集回應的動作，導致偵測情緒列會失敗的狀況，所以先捲回到畫面最前頭，避免等下FIND不到
-                    self.driver.execute_script(f"window.scrollTo(0, 0)")
-                    self.driver.find_element_by_xpath(
-                        '//a[@data-testid="UFI2ReactionsCount/root"]'
-                    ).click()
-                except Exception as e:
-                    print(post_id)
-                    print(type(e), e)
-                    print("click emoji tab fail!")
-                    time.sleep(2)
-                    # driver.maximize_window()
-                    continue
-                else:
-                    # print(post_id)
-                    # print("click emoji tab sucess.")
-                    break
-
-            # 確認popup已經出現後才讀取情緒
-            WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//div[@class="_21ab"]'))
-            )
-            time.sleep(1)
-            while True:
-                try:
-                    soupPopupEmoji = BeautifulSoup(
-                        self.driver.page_source, "html.parser"
+            try:
+                # 等待情緒列的出現，出現後則點選
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, '//a[@data-testid="UFI2ReactionsCount/root"]')
                     )
-                    # Emoji tab
-                    soupEmojiTab = soupPopupEmoji.find("div", {"class": "_21ab"})
-                    # print('soupEmojiTab', soupEmojiTab)
-                    # 所有的情緒內容
-                    # soupEmojiTabContents = soupEmojiTab.find_all(
-                    #    "li", {'class': '_ds- _45hc'})
-                    # print('soupEmojiTabContent', soupEmojiTabContents)
-                except Exception as e:
-                    # print(post_id)
-                    print(type(e), e)
-                    print("click emoji popup fail")
-                    time.sleep(2)
-                    # driver.maximize_window()
-                    continue
-                else:
-                    # print("click emoji popup, clicked.")
-                    break
+                )
+                while True:
+                    try:
+                        # 因應往下捲蒐集回應的動作，導致偵測情緒列會失敗的狀況，所以先捲回到畫面最前頭，避免等下FIND不到
+                        self.driver.execute_script(f"window.scrollTo(0, 0)")
+                        element_emoji = (
+                            By.XPATH,
+                            '//a[@data-testid="UFI2ReactionsCount/root"]',
+                        )
+                        self.driver.find_element(*element_emoji).click()
+                    except Exception as e:
+                        print("\n{} click emoji tab fail,{}".format(post_id, e.args[0]))
+                        time.sleep(2)
+                        continue
+                    else:
+                        break
+            except Exception as e:
+                print("\n{} no emoji tab link: {}".format(post_id, e.args[0]))
+                time.sleep(2)
+
+            try:
+                # 確認popup已經出現後才讀取情緒
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, '//div[@class="_21ab"]'))
+                )
+                time.sleep(1)
+                while True:
+                    try:
+                        soupPopupEmoji = BeautifulSoup(
+                            self.driver.page_source, "html.parser"
+                        )
+                        # Emoji tab
+                        soupEmojiTab = soupPopupEmoji.find("div", {"class": "_21ab"})
+                    except Exception as e:
+                        print(
+                            "\n{} click emoji popup fail,{}".format(post_id, e.args[0])
+                        )
+                        time.sleep(2)
+                        continue
+                    else:
+                        break
+            except Exception as e:
+                print("\n{} no emoji popup: {}".format(post_id, e.args[0]))
+                time.sleep(2)
 
             allEmoji = 0
             goodEmoji = 0
@@ -462,25 +407,29 @@ class FacebookGroupCrawler(object):
             cryEmoji = 0
 
             # 拆解情緒列的內容及對應的次數
-            listEmoji = re.findall('aria-label="(.*?)"', str(soupEmojiTab))
-            for emojistring in listEmoji:
-                emojitype = emojistring.split(" ")[1]
-                emojicount = int(emojistring.split(" ")[0].replace(",", ""))
-                # print('emojistring', emojistring)
-                if emojitype == "人對這則貼文傳達了心情":
-                    allEmoji = emojicount
-                elif emojitype == "人表示讚":
-                    goodEmoji = emojicount
-                elif emojitype == "人表示哈":
-                    haEmoji = emojicount
-                elif emojitype == "人表示哇":
-                    waEmoji = emojicount
-                elif emojitype == "人表示大心":
-                    heartEmoji = emojicount
-                elif emojitype == "人用怒傳達了心情":
-                    angryEmoji = emojicount
-                elif emojitype == "人表示嗚":
-                    cryEmoji = emojicount
+            try:
+                listEmoji = re.findall('aria-label="(.*?)"', str(soupEmojiTab))
+                for emojistring in listEmoji:
+                    emojitype = emojistring.split(" ")[1]
+                    emojicount = int(emojistring.split(" ")[0].replace(",", ""))
+                    # print('emojistring', emojistring)
+                    if emojitype == "人對這則貼文傳達了心情":
+                        allEmoji = emojicount
+                    elif emojitype == "人表示讚":
+                        goodEmoji = emojicount
+                    elif emojitype == "人表示哈":
+                        haEmoji = emojicount
+                    elif emojitype == "人表示哇":
+                        waEmoji = emojicount
+                    elif emojitype == "人表示大心":
+                        heartEmoji = emojicount
+                    elif emojitype == "人用怒傳達了心情":
+                        angryEmoji = emojicount
+                    elif emojitype == "人表示嗚":
+                        cryEmoji = emojicount
+            except Exception as e:
+                print("\n{} no emoji count: {}".format(post_id, e.args[0]))
+                time.sleep(2)
 
             # 產生貼文情緒的JSON物件，並回寫
             emojiDict = {}
@@ -497,10 +446,7 @@ class FacebookGroupCrawler(object):
                 },
             )
 
-            # print('emojiDict', emojiDict)
             self.fbposts[post_id].update(emojiDict)
-
-        # self.driver.quit()
 
 
 if __name__ == "__main__":
