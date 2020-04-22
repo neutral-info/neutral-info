@@ -5,10 +5,12 @@ from os import makedirs
 
 import click
 import schedule
+from dynaconf import settings
 
 from facebook_group import FacebookGroupCrawler
 
-DATA_PATH = "./data"
+DATA_PATH = settings.DATA_PATH
+TARGETS = settings.TARGETS
 
 
 def heart_beat():
@@ -16,16 +18,18 @@ def heart_beat():
 
 
 def run():
-    # crawler = FacebookGroupCrawler()
+    crawler = FacebookGroupCrawler()
+    print('TARGETS', TARGETS)
     makedirs(DATA_PATH, exist_ok=True)
-    FacebookGroupCrawler().start_Crawler('2065219296931017', DATA_PATH)
+    for target in TARGETS:
+        crawler.start_Crawler(target, DATA_PATH)
 
 
 @click.command()
-@click.option('-s', '--schedule_arg', is_flag=True, help="run every 2 hours")
+@click.option('-s', '--schedule_arg', is_flag=True, help="run every 30 minutes")
 def main(schedule_arg):
     if schedule_arg is True:
-        schedule.every(2).hours.do(run)
+        schedule.every(30).minutes.do(run)
         schedule.every().minutes.do(heart_beat)
         while True:
             schedule.run_pending()
