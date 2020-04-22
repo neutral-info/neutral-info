@@ -81,6 +81,8 @@ services:
       - type: volumes
         source: facebook_group
         target: /app/data
+    environment:    
+      PYTHONUNBUFFERED: 1
     networks:
       - elk
     depends_on:
