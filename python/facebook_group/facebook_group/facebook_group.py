@@ -6,10 +6,10 @@ from selenium.webdriver.chrome.options import Options
 import requests
 from bs4 import BeautifulSoup
 import re
-import time
 import datetime
 from datetime import timedelta, date
 import json
+from time import sleep
 from dynaconf import settings
 from PIL import Image
 import pytesseract
@@ -39,18 +39,38 @@ class FacebookGroupCrawler(object):
 
     driver = webdriver.Chrome(options=chrome_options)
     driver.get("http://www.facebook.com")
-    time.sleep(3)
+    sleep(3)
 
     def __init__(self, cmdline=None, as_lib=False):
-
         print("1.1 登入臉書")
-        element_login_username = (By.ID, "email")
-        element_login_password = (By.ID, "pass")
-        element_login_button = (By.ID, "loginbutton")
-        self.driver.find_element(*element_login_username).send_keys(self.username)
-        self.driver.find_element(*element_login_password).send_keys(self.password)
-        self.driver.find_element(*element_login_button).click()
-        time.sleep(3)
+        try:
+            WebDriverWait(self.driver, 5).until(
+                EC.presence_of_element_located((By.ID, "email"))
+            )
+            sleep(1)
+            while True:
+                try:
+                    element_login_username = (By.ID, "email")
+                    element_login_password = (By.ID, "pass")
+                    element_login_button = (By.ID, "loginbutton")
+                    self.driver.find_element(*element_login_username).send_keys(
+                        self.username
+                    )
+                    self.driver.find_element(*element_login_password).send_keys(
+                        self.password
+                    )
+                    self.driver.find_element(*element_login_button).click()
+                    sleep(3)
+                except Exception as e:
+                    # 直到找不到comment的連結才跳出
+                    print("\nlogin facebook fail: {}".format(e.args[0]))
+                    sleep(2)
+                    break
+                else:
+                    break
+        except Exception as e:
+            print("\nCan't find login's email: {}".format(e.args[0]))
+            sleep(2)
 
     def start_Crawler(self, fbgroup, data_path):
         # 取得執行爬取的社團
@@ -91,18 +111,17 @@ class FacebookGroupCrawler(object):
 
         print("1.2 切換到特定社團", self.fbgroup)
         self.driver.get("https://www.facebook.com/groups/" + self.fbgroup + "/")
-        time.sleep(3)
+        sleep(3)
 
         # 往下捲12次
         print("1.3 預計往下捲12次")
         for i in range(12):
-            if i > 0:
-                time.sleep(2)
             y = 4000 * (i + 1)
             self.driver.execute_script(f"window.scrollTo(0, {y})")
             print(
                 "1.3 往下捲第 {} 次".format(i), end="\r",
             )
+            sleep(2)
 
         htmltext = self.driver.page_source
         print("1.4 已取得往下捲12次後在『動態消息』的貼文")
@@ -238,7 +257,7 @@ class FacebookGroupCrawler(object):
                         print(
                             "\nload {} post image fail: {}".format(post_id, e.args[0])
                         )
-                        time.sleep(2)
+                        sleep(2)
 
             # 建立一個函式用於檢測是否有『更多留言』或『檢視另XX則留言』出現
             def checkMoreComment():
@@ -248,7 +267,7 @@ class FacebookGroupCrawler(object):
                             (By.XPATH, '//div[@class="_4swz _293g"]')
                         )
                     )
-                    time.sleep(1)
+                    sleep(1)
                     while True:
                         try:
                             element_morecomment = (
@@ -263,14 +282,14 @@ class FacebookGroupCrawler(object):
                                     post_id, e.args[0]
                                 )
                             )
-                            time.sleep(2)
+                            sleep(2)
                             break
                         else:
                             checkMoreComment()
                             break
                 except Exception as e:
                     print("\n{} no expand comment link: {}".format(post_id, e.args[0]))
-                    time.sleep(2)
+                    sleep(2)
 
             checkMoreComment()
 
@@ -282,7 +301,7 @@ class FacebookGroupCrawler(object):
                             (By.XPATH, '//span[@class="_4sso _4ssp"]')
                         )
                     )
-                    time.sleep(1)
+                    sleep(1)
                     while True:
                         try:
                             element_morereplycomment = (
@@ -296,14 +315,14 @@ class FacebookGroupCrawler(object):
                                     post_id, e.args[0]
                                 )
                             )
-                            time.sleep(2)
+                            sleep(2)
                             break
                         else:
                             checkMoreReplyComment()
                             break
                 except Exception as e:
                     print("\n{} no reply comment link: {}".format(post_id, e.args[0]))
-                    time.sleep(2)
+                    sleep(2)
 
             checkMoreReplyComment()
 
@@ -345,7 +364,7 @@ class FacebookGroupCrawler(object):
 
             except Exception as e:
                 print("\n{} read comment fail: {}".format(post_id, e.args[0]))
-                time.sleep(2)
+                sleep(2)
 
             try:
                 # 等待情緒列的出現，出現後則點選
@@ -365,20 +384,20 @@ class FacebookGroupCrawler(object):
                         self.driver.find_element(*element_emoji).click()
                     except Exception as e:
                         print("\n{} click emoji tab fail,{}".format(post_id, e.args[0]))
-                        time.sleep(2)
+                        sleep(2)
                         continue
                     else:
                         break
             except Exception as e:
                 print("\n{} no emoji tab link: {}".format(post_id, e.args[0]))
-                time.sleep(2)
+                sleep(2)
 
             try:
                 # 確認popup已經出現後才讀取情緒
                 WebDriverWait(self.driver, 5).until(
                     EC.presence_of_element_located((By.XPATH, '//div[@class="_21ab"]'))
                 )
-                time.sleep(1)
+                sleep(1)
                 while True:
                     try:
                         soupPopupEmoji = BeautifulSoup(
@@ -390,13 +409,13 @@ class FacebookGroupCrawler(object):
                         print(
                             "\n{} click emoji popup fail,{}".format(post_id, e.args[0])
                         )
-                        time.sleep(2)
+                        sleep(2)
                         continue
                     else:
                         break
             except Exception as e:
                 print("\n{} no emoji popup: {}".format(post_id, e.args[0]))
-                time.sleep(2)
+                sleep(2)
 
             allEmoji = 0
             goodEmoji = 0
@@ -429,7 +448,7 @@ class FacebookGroupCrawler(object):
                         cryEmoji = emojicount
             except Exception as e:
                 print("\n{} no emoji count: {}".format(post_id, e.args[0]))
-                time.sleep(2)
+                sleep(2)
 
             # 產生貼文情緒的JSON物件，並回寫
             emojiDict = {}
