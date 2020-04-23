@@ -5,8 +5,6 @@ from os import makedirs
 import click
 import schedule
 
-from crawler import PttWebCrawler
-
 DATA_PATH = "./data"
 
 
@@ -15,13 +13,7 @@ def heart_beat():
 
 
 def run():
-    crawler = PttWebCrawler(as_lib=True)
-    last_page = crawler.getLastPage("Gossiping")
     makedirs(DATA_PATH, exist_ok=True)
-    crawler.parse_articles(38788, 38987, "Gossiping", path=DATA_PATH)
-    # crawler.parse_articles(last_page - 150, last_page, "Gossiping", path=DATA_PATH)
-    # crawler.parse_articles(last_page - 10, last_page, "Stock", path=DATA_PATH)
-    # crawler.parse_articles(last_page - 20, last_page, "C_Chat", path=DATA_PATH)
 
 
 @click.command()

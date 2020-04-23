@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+requests = "*"
+schedule = "*"
+click = "*"
+
+[dev-packages]
+black = "==19.10b0"
+flake8 = "*"
+pytest = "*"
+mypy = "*"
+
+[requires]
+python_version = "3.8"

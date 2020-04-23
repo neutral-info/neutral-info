@@ -5,5 +5,6 @@
   "python.linting.pylintEnabled": false,
   "python.linting.flake8Enabled": true,
   "python.linting.flake8Args": ["--ignore=E501"],
-  "python.linting.mypyEnabled": true
+  "python.linting.mypyEnabled": true,
+  "python.pythonPath": "/home/bangyuwen/.virtualenvs/pixnet-VcWgMeyS/bin/python3.8"
 }
