@@ -234,10 +234,18 @@ class FacebookGroupCrawler(object):
             # 如果貼文沒有文字內容，就嘗試取得貼文照片
             if self.fbposts[post_id]["post_message"] == "Sticker":
                 soupArticle = BeautifulSoup(self.driver.page_source, "html.parser")
-                postScaledImage = soupArticle.select('div[role="article"]')[0].select(
-                    'img[class="scaledImageFitWidth img"]'
-                )
-                postImg = re.findall('src="(.*?)"', str(postScaledImage))
+                try:
+                    postScaledImage = soupArticle.select('div[role="article"]')[
+                        0
+                    ].select('img[class="scaledImageFitWidth img"]')
+                    postImg = re.findall('src="(.*?)"', str(postScaledImage))
+                except Exception as e:
+                    print(
+                        "\n{} post is sticker without image: {}".format(
+                            post_id, e.args[0]
+                        )
+                    )
+                    postImg = []
                 if len(postImg) > 1:
                     postImgUrl = postImg[0].replace("amp;", "")
                     try:
