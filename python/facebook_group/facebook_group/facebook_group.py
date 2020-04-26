@@ -102,7 +102,19 @@ class FacebookGroupCrawler(object):
         )
         print("0.2 將貼文資料寫入:{}".format(fbpostjsonfilename))
         with open(fbpostjsonfilename, "w", encoding="utf8") as f:
-            json.dump(self.fbposts, f, ensure_ascii=False)
+            # 調整成特殊JSON格式供filebeat使用
+            if self.fbposts:  # a check to determine that our array is not empty
+                for (
+                    fbpost
+                ) in self.fbposts.values():  # now loop through your elements one by one
+                    json.dump(
+                        fbpost, f, ensure_ascii=False
+                    )  # JSON encode each element and write it to the file
+                    f.write(
+                        ",\n"
+                    )  # close the element entry with a comma and a new line
+                # f.seek(-3, 1)  # go back to the last separator to clear out the comma
+            f.truncate()
 
     def get_htmltext(self, username, password):
         """
