@@ -16,6 +16,9 @@ import pytesseract
 
 
 class FacebookGroupCrawler(object):
+    # 給後面初始化webdriver使用
+    driver = None
+
     # 從setting.toml中讀取臉書帳密
     username = settings.FBUSERNAME
     password = settings.FBUSERPASSWORD
@@ -37,11 +40,11 @@ class FacebookGroupCrawler(object):
         "prefs", {"profile.default_content_setting_values.notifications": 2}
     )
 
-    driver = webdriver.Chrome(options=chrome_options)
-    driver.get("http://www.facebook.com")
-    sleep(3)
+    def start_Crawler(self, fbgroup, data_path):
+        self.driver = webdriver.Chrome(options=self.chrome_options)
+        self.driver.get("http://www.facebook.com")
+        sleep(3)
 
-    def __init__(self, cmdline=None, as_lib=False):
         print("1.1 登入臉書")
         try:
             WebDriverWait(self.driver, 5).until(
@@ -72,7 +75,6 @@ class FacebookGroupCrawler(object):
             print("\nCan't find login's email: {}".format(e.args[0]))
             sleep(2)
 
-    def start_Crawler(self, fbgroup, data_path):
         # 取得執行爬取的社團
         self.fbgroup = fbgroup
 
@@ -101,6 +103,7 @@ class FacebookGroupCrawler(object):
             fbgroup, datetime.datetime.now().timestamp()
         )
         print("0.2 將貼文資料寫入:{}".format(fbpostjsonfilename))
+        fbpost = None
         with open(fbpostjsonfilename, "w", encoding="utf8") as f:
             # 調整成特殊JSON格式供filebeat使用
             if self.fbposts:  # a check to determine that our array is not empty
@@ -115,6 +118,10 @@ class FacebookGroupCrawler(object):
                     )  # close the element entry with a comma and a new line
                 # f.seek(-3, 1)  # go back to the last separator to clear out the comma
             f.truncate()
+
+        # 關掉webdriver降低記憶體使用量
+        self.driver.quit()
+        print("0.3 close webdriver")
 
     def get_htmltext(self, username, password):
         """
@@ -152,8 +159,8 @@ class FacebookGroupCrawler(object):
         post_persons = []
         post_messages = []
         post_times = []
-        ustart_date = start_date.timestamp()
-        uend_date = end_date.timestamp()
+        ustart_date: int = start_date.timestamp()
+        uend_date: int = end_date.timestamp()
         soup = BeautifulSoup(htmltext, "html.parser")
         body = soup.find("body")
         posts = body.select('div[id="pagelet_group_mall"]')[0].select(
@@ -198,25 +205,28 @@ class FacebookGroupCrawler(object):
                     post_times.append(post_time)
                     post_persons.append(post_person)
                     post_messages.append(post_message)
-
-                try:
-                    # 貼文基本JSON物件
-                    postjson = {}
-                    postjson.setdefault(
-                        post_id,
-                        {
-                            "sys_id": "facebookgroup_" + self.fbgroup + "_" + post_id,
-                            "sys_type": "facebookgroup",
-                            "board_id": self.fbgroup,
-                            "post_id": post_id,
-                            "post_time": post_time,
-                            "post_person": post_person,
-                            "post_message": post_message,
-                        },
-                    )
-                    self.fbposts.update(postjson)
-                except Exception:
-                    pass
+                    # 如果時間在七天內的貼文才抓取進入解析範圍
+                    try:
+                        # 貼文基本JSON物件
+                        postjson = {}
+                        postjson.setdefault(
+                            post_id,
+                            {
+                                "sys_id": "facebookgroup_"
+                                + self.fbgroup
+                                + "_"
+                                + post_id,
+                                "sys_type": "facebookgroup",
+                                "board_id": self.fbgroup,
+                                "post_id": post_id,
+                                "post_time": post_time,
+                                "post_person": post_person,
+                                "post_message": post_message,
+                            },
+                        )
+                        self.fbposts.update(postjson)
+                    except Exception:
+                        pass
         print("2.1 已解析『動態消息』近一個禮拜的貼文狀態")
 
     def parse_post(self, username, password):

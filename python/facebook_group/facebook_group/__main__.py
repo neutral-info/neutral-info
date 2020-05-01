@@ -10,7 +10,7 @@ from dynaconf import settings
 from facebook_group import FacebookGroupCrawler
 
 DATA_PATH = settings.DATA_PATH
-TARGETS = settings.TARGETS
+TARGETS = settings.GROUP_TARGETS
 
 
 def heart_beat():
@@ -19,7 +19,7 @@ def heart_beat():
 
 def run():
     crawler = FacebookGroupCrawler()
-    print('TARGETS', TARGETS)
+    print('Facebook group targets', TARGETS)
     makedirs(DATA_PATH, exist_ok=True)
     for target in TARGETS:
         crawler.start_Crawler(target, DATA_PATH)
