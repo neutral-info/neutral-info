@@ -1,0 +1,13 @@
+[default]
+news_targets = ["ltn.com.tw"]
+news_days = 1
+api_key = ""
+data_path = "./data"
+schedule_minutes = "480"
+dbsrv_ip = ""
+dbsrv_port = ""
+dbsrv_username = ""
+dbsrv_password = ""
+dbsrv_schema = ""
+dbsrv_news_table = ""
+dbsrv_volume_table = ""
