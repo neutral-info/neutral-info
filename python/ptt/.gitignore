@@ -1,0 +1,7 @@
+__pycache__
+
+# Add temperiory for reference
+settings.toml
+
+# data output
+data/

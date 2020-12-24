@@ -15,12 +15,21 @@ def heart_beat():
 
 
 def run():
+    # 爬蟲抓取了四個板：Gossiping、Stock、C_Chat、HatePolitics
     crawler = PttWebCrawler(as_lib=True)
-    last_page = crawler.getLastPage("Gossiping")
+    Gossiping_last_page = crawler.getLastPage("Gossiping")
+    Stock_last_page = crawler.getLastPage("Stock")
+    C_Chat_last_page = crawler.getLastPage("C_Chat")
+    HatePolitics_last_page = crawler.getLastPage("HatePolitics")
     makedirs(DATA_PATH, exist_ok=True)
-    crawler.parse_articles(last_page - 150, last_page, "Gossiping", path=DATA_PATH)
-    crawler.parse_articles(last_page - 10, last_page, "Stock", path=DATA_PATH)
-    crawler.parse_articles(last_page - 20, last_page, "C_Chat", path=DATA_PATH)
+    print("Processing Gossiping")
+    crawler.parse_articles(Gossiping_last_page - 100, Gossiping_last_page, "Gossiping", path=DATA_PATH)
+    print("Processing Stock")
+    crawler.parse_articles(Stock_last_page - 10, Stock_last_page, "Stock", path=DATA_PATH)
+    print("Processing C_Chat")
+    crawler.parse_articles(C_Chat_last_page - 20, C_Chat_last_page, "C_Chat", path=DATA_PATH)
+    print("Processing HatePolitics")
+    crawler.parse_articles(HatePolitics_last_page - 20, HatePolitics_last_page, "HatePolitics", path=DATA_PATH)
 
 
 @click.command()

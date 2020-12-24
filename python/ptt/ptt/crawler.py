@@ -6,6 +6,7 @@ import json
 import os
 import re
 import time
+import datetime
 
 import requests
 from bs4 import BeautifulSoup
@@ -217,6 +218,7 @@ class PttWebCrawler(object):
         # print 'mscounts', message_count
 
         # json data
+        # 補上crawler抓取資料的觸發時間，以便後續計算聲量使用
         data = {
             "url": link,
             "board": board,
@@ -228,6 +230,7 @@ class PttWebCrawler(object):
             "ip": ip,
             "message_count": message_count,
             "messages": messages,
+            "triger_time": datetime.datetime.now().astimezone().isoformat(),
         }
         # print 'original:', d
         return json.dumps(data, sort_keys=True, ensure_ascii=False)
