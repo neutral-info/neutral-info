@@ -1,5 +1,5 @@
 [default]
-news_targets = ["ltn.com.tw"]
+news_targets = ["ltn.com.tw","newtalk.tw","udn.com","yahoo.com.tw","gamer.com.tw","cna.com.tw","ettoday.net","cnyes.com","ctwant.com","appledaily.com"]
 news_days = 1
 api_key = ""
 data_path = "./data"
@@ -8,6 +8,6 @@ dbsrv_ip = ""
 dbsrv_port = ""
 dbsrv_username = ""
 dbsrv_password = ""
-dbsrv_schema = ""
-dbsrv_news_table = ""
-dbsrv_volume_table = ""
+dbsrv_schema = "neutralinfo"
+dbsrv_news_table = "newsFromApi"
+dbsrv_volume_table = "volume"
