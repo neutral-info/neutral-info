@@ -1,0 +1,21 @@
+__pycache__
+
+# Add temperiory for reference
+settings.toml
+
+# test file
+test.html
+test.json
+temp.jpg
+temp2.jpg
+*.json
+*.csv
+*.log
+
+# chinese trainning data
+tessdata/
+
+# data output
+output/
+data/
+Screenshots/
