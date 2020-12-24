@@ -6,7 +6,7 @@
 # prepare
 1. settings_sample.toml 檔案請修改DB主機位置及帳密後，改寫後的檔名為 settings.toml
 
-＃ python 環境執行
+# python 環境執行
 cd python/newsCrawler/
 python newsFromApi
 
