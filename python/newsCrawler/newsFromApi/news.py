@@ -45,6 +45,12 @@ class News(object):
                         queryday = datetime.now() - timedelta(i)
                         strQueryday = datetime.strftime(queryday, "%Y-%m-%d")
 
+                        # print(
+                        #     "News target:{}, from_param:{}, to:{}".format(
+                        #         target, strQueryday, strQueryday
+                        #     )
+                        # )
+
                         all_articles: dict = newsapi.get_everything(
                             # q="bitcoin",
                             # sources="bbc-news,the-verge",

@@ -33,7 +33,7 @@ def run():
 @click.option("-s", "--schedule_arg", is_flag=True, help="run every 30 minutes")
 def main(schedule_arg):
     if schedule_arg is True:
-        schedule.every(SCHEDULE_MINUTES).minutes.do(run)
+        schedule.every(480).minutes.do(run)
         schedule.every().minutes.do(heart_beat)
         while True:
             schedule.run_pending()

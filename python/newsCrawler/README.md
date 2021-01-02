@@ -5,10 +5,13 @@
 
 # prepare
 1. settings_sample.toml 檔案請修改DB主機位置及帳密後，改寫後的檔名為 settings.toml
+2. 新聞關鍵字的斷詞是透過ckiptagger，需要先行下載模型，放到 newsFromApi/data，模型下載位置請參考 https://github.com/ckiplab/ckiptagger
 
 # python 環境執行
 cd python/newsCrawler/
 python newsFromApi
+
+# 目前Docker一直無法正常運作，後續看是否有人能修改好
 
 # docker build
 docker build -t newscrawler .
