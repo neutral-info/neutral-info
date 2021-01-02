@@ -1,68 +1,69 @@
 version: "3.2"
 
 services:
-  elasticsearch:
-    build:
-      context: elk/elasticsearch/
-      args:
-        ELK_VERSION: $ELK_VERSION
-    volumes:
-      - type: bind
-        source: ./elk/elasticsearch/config/elasticsearch.yml
-        target: /usr/share/elasticsearch/config/elasticsearch.yml
-        read_only: true
-      - type: volume
-        source: elasticsearch
-        target: /usr/share/elasticsearch/data
-    ports:
-      - "9200:9200"
-      - "9300:9300"
-    environment:
-      ES_JAVA_OPTS: "-Xmx512m -Xms512m"
-      ELASTIC_PASSWORD: changeme
-      # Use single node discovery in order to disable production mode and avoid bootstrap checks
-      # see https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
-      discovery.type: single-node
-    networks:
-      - elk
+  # elasticsearch:
+  #   build:
+  #     context: elk/elasticsearch/
+  #     args:
+  #       ELK_VERSION: $ELK_VERSION
+  #   volumes:
+  #     - type: bind
+  #       source: ./elk/elasticsearch/config/elasticsearch.yml
+  #       target: /usr/share/elasticsearch/config/elasticsearch.yml
+  #       read_only: true
+  #     - type: volume
+  #       source: elasticsearch
+  #       target: /usr/share/elasticsearch/data
+  #   ports:
+  #     - "9200:9200"
+  #     - "9300:9300"
+  #   environment:
+  #     ES_JAVA_OPTS: "-Xmx512m -Xms512m"
+  #     ELASTIC_PASSWORD: changeme
+  #     # Use single node discovery in order to disable production mode and avoid bootstrap checks
+  #     # see https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+  #     discovery.type: single-node
+  #   networks:
+  #     - elk
 
-  kibana:
-    build:
-      context: elk/kibana/
-      args:
-        ELK_VERSION: $ELK_VERSION
-    volumes:
-      - type: bind
-        source: ./elk/kibana/config/kibana.yml
-        target: /usr/share/kibana/config/kibana.yml
-        read_only: true
-    ports:
-      - "5601:5601"
-    networks:
-      - elk
-    depends_on:
-      - elasticsearch
+  # kibana:
+  #   build:
+  #     context: elk/kibana/
+  #     args:
+  #       ELK_VERSION: $ELK_VERSION
+  #   volumes:
+  #     - type: bind
+  #       source: ./elk/kibana/config/kibana.yml
+  #       target: /usr/share/kibana/config/kibana.yml
+  #       read_only: true
+  #   ports:
+  #     - "5601:5601"
+  #   networks:
+  #     - elk
+  #   depends_on:
+  #     - elasticsearch
 
-  filebeat:
-    image: docker.elastic.co/beats/filebeat:$ELK_VERSION
-    volumes:
-      - type: bind
-        source: ./filebeat/filebeat.yml
-        target: /usr/share/filebeat/filebeat.yml
-        read_only: true
-      - type: volumes
-        source: ptt
-        target: /var/log/filebeat/ptt
-      - type: volumes
-        source: facebook_group
-        target: /var/log/filebeat/facebook_group
-    networks:
-      - elk
-    depends_on:
-      - elasticsearch
-      - kibana
+  # filebeat:
+  #   image: docker.elastic.co/beats/filebeat:$ELK_VERSION
+  #   volumes:
+  #     - type: bind
+  #       source: ./filebeat/filebeat.yml
+  #       target: /usr/share/filebeat/filebeat.yml
+  #       read_only: true
+  #     - type: volumes
+  #       source: ptt
+  #       target: /var/log/filebeat/ptt
+  #     - type: volumes
+  #       source: facebook_group
+  #       target: /var/log/filebeat/facebook_group
+  #   networks:
+  #     - elk
+  #   depends_on:
+  #     - elasticsearch
+  #     - kibana
 
   ptt:
+    restart: always
     build:
       context: python/ptt/
     volumes:
@@ -70,9 +71,9 @@ services:
         source: ptt
         target: /app/data
     networks:
-      - elk
+      - neutralinfo
     depends_on:
-      - elasticsearch
+      - db
 
   facebook_group:
     build:
@@ -84,9 +85,34 @@ services:
     environment:    
       PYTHONUNBUFFERED: 1
     networks:
-      - elk
+      - neutralinfo
     depends_on:
-      - elasticsearch
+      - db
+
+  facebook_fanpage:
+    build:
+      context: python/facebook_fanpage/
+    volumes:
+      - type: volumes
+        source: facebook_fanpage
+        target: /app/data
+    environment:    
+      PYTHONUNBUFFERED: 1
+    networks:
+      - neutralinfo
+    depends_on:
+      - db
+
+  # newscrawler:
+  #   restart: always
+  #   build:
+  #     context: python/newsCrawler/
+  #   environment:    
+  #     PYTHONUNBUFFERED: 1
+  #   networks:
+  #     - neutralinfo
+  #   depends_on:
+  #     - db
 
   db:
     image: mysql
@@ -101,12 +127,17 @@ services:
       - 3306:3306
     volumes:
       - ./sqls:/docker-entrypoint-initdb.d
+      - mysql:/var/lib/mysql
+    networks:
+      - neutralinfo
 
 networks:
-  elk:
+  neutralinfo:
     driver: bridge
 
 volumes:
   elasticsearch:
   ptt:
   facebook_group:
+  facebook_fanpage:
+  mysql:
