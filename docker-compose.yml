@@ -90,6 +90,7 @@ services:
       - db
 
   facebook_fanpage:
+    restart: always
     build:
       context: python/facebook_fanpage/
     volumes:
