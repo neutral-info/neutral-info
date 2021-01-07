@@ -93,10 +93,6 @@ services:
     restart: always
     build:
       context: python/facebook_fanpage/
-    volumes:
-      - type: volumes
-        source: facebook_fanpage
-        target: /app/data
     environment:    
       PYTHONUNBUFFERED: 1
     networks:
@@ -140,5 +136,4 @@ volumes:
   elasticsearch:
   ptt:
   facebook_group:
-  facebook_fanpage:
   mysql:

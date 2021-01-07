@@ -16,6 +16,9 @@ pytesseract = "*"
 schedule = "*"
 click = "*"
 pillow = "*"
+pandas = "*"
+sqlalchemy = "*"
+pymysql = "*"
 
 [requires]
 python_version = "3.7"

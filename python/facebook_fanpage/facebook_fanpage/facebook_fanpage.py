@@ -14,6 +14,8 @@ from time import sleep
 from dynaconf import settings
 from PIL import Image
 import pytesseract
+import pandas as pd
+from sqlalchemy import create_engine
 
 
 class FacebookFanpageCrawler(object):
@@ -25,6 +27,14 @@ class FacebookFanpageCrawler(object):
     username = settings.FBUSERNAME
     password = settings.FBUSERPASSWORD
 
+    # 從setting.toml中讀取資料庫相關設定
+    DBSRV_IP = settings.DBSRV_IP
+    DBSRV_PORT = settings.DBSRV_PORT
+    DBSRV_USERNAME = settings.DBSRV_USERNAME
+    DBSRV_PASSWORD = settings.DBSRV_PASSWORD
+    DBSRV_SCHEMA = settings.DBSRV_SCHEMA
+    DBSRV_FB_FANPAGE_TABLE = settings.DBSRV_FB_FANPAGE_TABLE
+
     fbposts: dict = {}
     fbfanpage = ""
     data_path = ""
@@ -32,7 +42,6 @@ class FacebookFanpageCrawler(object):
     chrome_options = Options()
     if settings.HEADLESS != "":
         chrome_options.add_argument(settings.HEADLESS)  # 啟動無頭模式
-    chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--disable-infobars")
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--no-sandbox")
@@ -65,35 +74,35 @@ class FacebookFanpageCrawler(object):
 
         self.actions = ActionChains(self.driver)
 
-        print("1.1 登入臉書")
-        try:
-            WebDriverWait(self.driver, 5).until(
-                EC.presence_of_element_located((By.ID, "email"))
-            )
-            sleep(1)
-            while True:
-                try:
-                    element_login_username = (By.ID, "email")
-                    element_login_password = (By.ID, "pass")
-                    element_login_button = (By.ID, "loginbutton")
-                    self.driver.find_element(*element_login_username).send_keys(
-                        self.username
-                    )
-                    self.driver.find_element(*element_login_password).send_keys(
-                        self.password
-                    )
-                    self.driver.find_element(*element_login_button).click()
-                    sleep(3)
-                except Exception as e:
-                    # 如果找不到login的地方就直接跳出
-                    print("login facebook fail: {}".format(e.args[0]))
-                    sleep(2)
-                    break
-                else:
-                    break
-        except Exception as e:
-            print("Can't find login's email: {}".format(e.args[0]))
-            sleep(2)
+        print("1.1 粉絲頁不需登入臉書")
+        # try:
+        #     WebDriverWait(self.driver, 5).until(
+        #         EC.presence_of_element_located((By.ID, "email"))
+        #     )
+        #     sleep(1)
+        #     while True:
+        #         try:
+        #             element_login_username = (By.ID, "email")
+        #             element_login_password = (By.ID, "pass")
+        #             element_login_button = (By.ID, "loginbutton")
+        #             self.driver.find_element(*element_login_username).send_keys(
+        #                 self.username
+        #             )
+        #             self.driver.find_element(*element_login_password).send_keys(
+        #                 self.password
+        #             )
+        #             self.driver.find_element(*element_login_button).click()
+        #             sleep(3)
+        #         except Exception as e:
+        #             # 如果找不到login的地方就直接跳出
+        #             print("login facebook fail: {}".format(e.args[0]))
+        #             sleep(2)
+        #             break
+        #         else:
+        #             break
+        # except Exception as e:
+        #     print("Can't find login's email: {}".format(e.args[0]))
+        #     sleep(2)
 
         # 取得執行爬取的粉絲頁
         self.fbfanpage = fbfanpage
@@ -101,7 +110,7 @@ class FacebookFanpageCrawler(object):
         # 取的資料下載的路徑
         self.data_path = data_path
 
-        # 取得往下捲100次後在『動態消息』的貼文
+        # 取得往下捲10次後在『動態消息』的貼文
         htmltext = self.get_htmltext(self.username, self.password)
 
         # 解析發文時間是近一個禮拜的貼文內容
@@ -118,22 +127,45 @@ class FacebookFanpageCrawler(object):
         # 解析單篇貼文中的情緒
         # self.parse_post(self.username, self.password)
 
-        # 將抓到的整個貼文資料寫成一個JSON檔
+        # 將抓到的整個貼文資料直接寫入資料庫
+        print("0.2 將貼文寫入資料庫")
         if self.fbposts:
-            for fbpost in self.fbposts.values():
-                # 將抓到的單筆貼文資料寫成一個JSON檔
-                fbpostjsonfilename = self.data_path + "/fbFanpagePost_{}_{}.log".format(
-                    fbfanpage, fbpost["post_id"]
+            # 改以將爬蟲資料直接寫入資料庫
+            engine = create_engine(
+                "mysql+pymysql://{}:{}@{}:{}/{}".format(
+                    self.DBSRV_USERNAME,
+                    self.DBSRV_PASSWORD,
+                    self.DBSRV_IP,
+                    self.DBSRV_PORT,
+                    self.DBSRV_SCHEMA,
                 )
-                print("0.2 將貼文資料寫入:{}".format(fbpostjsonfilename))
-                with open(fbpostjsonfilename, "a+", encoding="utf8") as f:
-                    json.dump(
-                        fbpost, f, ensure_ascii=False
-                    )  # JSON encode each element and write it to the file
-                    f.write(
-                        ",\n"
-                    )  # close the element entry with a comma and a new line
-                    f.truncate()
+            )
+
+            for fbpost in self.fbposts.values():
+                # 20200106 保留寫成檔案的模式，未來如果要入ELK可以另行考慮使用
+                # 將抓到的單筆貼文資料寫成一個JSON檔
+                # fbpostjsonfilename = self.data_path + "/fbFanpagePost_{}_{}.log".format(
+                #     fbfanpage, fbpost["post_id"]
+                # )
+                # print("0.2 將貼文資料寫入:{}".format(fbpostjsonfilename))
+                # with open(fbpostjsonfilename, "a+", encoding="utf8") as f:
+                #     json.dump(
+                #         fbpost, f, ensure_ascii=False
+                #     )  # JSON encode each element and write it to the file
+                #     f.write(
+                #         ",\n"
+                #     )  # close the element entry with a comma and a new line
+                #     f.truncate()
+                # 初始化資料庫連線，使用pymysql模組
+
+                # 臉書貼文資料寫入資料庫
+                dfFBFanpage = pd.DataFrame(fbpost, index=[0])
+                dfFBFanpage.to_sql(
+                    self.DBSRV_FB_FANPAGE_TABLE,
+                    con=engine,
+                    if_exists="append",
+                    index=False,
+                )
 
         # 關掉webdriver降低記憶體使用量
         self.driver.quit()
@@ -141,7 +173,7 @@ class FacebookFanpageCrawler(object):
 
     def get_htmltext(self, username, password):
         """
-        取得特定社團往下捲100次後的HTML全文
+        取得特定社團往下捲10次後的HTML全文
         """
 
         print("1.2 切換到特定粉絲團", self.fbfanpage)
@@ -149,8 +181,8 @@ class FacebookFanpageCrawler(object):
         sleep(3)
 
         # 往下捲100次
-        print("1.3 預計往下捲100次")
-        for i in range(100):
+        print("1.3 預計往下捲10次")
+        for i in range(10):
             y = 4000 * (i + 1)
             self.driver.execute_script(f"window.scrollTo(0, {y})")
             print("1.3 往下捲第 {} 次".format(i))
@@ -432,14 +464,24 @@ class FacebookFanpageCrawler(object):
                             "post_person": post_person,
                             "post_message": post_message,
                             "post_comment_count": post_comment_count,
+                            # 配合直接寫入資料庫的調整，變動情緒量的表示方式
                             # "emoji": emojiDict,
+                            "allEmoji": post_emoji_all,
+                            "goodEmoji": goodEmoji,
+                            "haEmoji": haEmoji,
+                            "waEmoji": waEmoji,
+                            "heartEmoji": heartEmoji,
+                            "angryEmoji": angryEmoji,
+                            "cryEmoji": cryEmoji,
+                            "comeonEmoji": comeonEmoji,
                             "crawler_time": str(datetime.datetime.now().timestamp()),
                         },
                     )
                     self.fbposts.update(postjson)
 
+                    # 配合直接寫入資料庫，因此不需要為情緒額外更新
                     # 根據第幾筆貼文來貼入上面所找到的情緒量
-                    self.fbposts[post_id].update(emojiDict)
+                    # self.fbposts[post_id].update(emojiDict)
                     numArticle = numArticle + 1
                 except Exception:
                     pass
