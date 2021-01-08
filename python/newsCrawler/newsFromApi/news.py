@@ -34,9 +34,9 @@ class News(object):
             newsapi = NewsApiClient(api_key=apiKey)
 
             # 初始化CKIP詞庫
-            ws = WS("./newsFromApi/data")
-            pos = POS("./newsFromApi/data")
-            ner = NER("./newsFromApi/data")
+            ws = WS("./data")
+            pos = POS("./data")
+            ner = NER("./data")
 
             if type(days) == int:
                 if days > 0:

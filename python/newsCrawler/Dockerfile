@@ -1,5 +1,7 @@
 FROM python:3.8
 
+ENV TZ Asia/Taipei
+
 # upgrade pip
 RUN pip install --upgrade pip
 RUN pip install pipenv
@@ -17,8 +19,11 @@ COPY . .
 # install from Pipfile.lock
 RUN pipenv install --system --deploy --ignore-pipfile
 
-# install CKIP tagger
-# RUN pipenv install -U ckiptagger[tf,gdown]
+# 下載 CKIP 資料集
+RUN ["python", "newsFromApi/download_ckip.py"]
+
+# 清除 CKIP 壓縮檔
+RUN rm data.zip
 
 # run crawler bot every 2 hours
 CMD ["python", "newsFromApi", "--schedule_arg"] 
