@@ -8,15 +8,17 @@ requests = "*"
 beautifulsoup4 = "*"
 schedule = "*"
 click = "*"
+pandas = "*"
+sqlalchemy = "*"
+pymysql = "*"
+dynaconf = "*"
 
 [dev-packages]
-black = "==19.10b0"
+black = "*"
 flake8 = "*"
-pytest = "*"
-mypy = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.9"
 
 [pipenv]
 allow_prereleases = true

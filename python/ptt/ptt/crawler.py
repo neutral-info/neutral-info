@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import absolute_import, print_function
 
 import argparse
@@ -10,10 +11,31 @@ import datetime
 
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
+from sqlalchemy import create_engine
+from dynaconf import settings
 
 __version__ = "1.0"
 
 VERIFY = True
+
+DBSRV_IP = settings.DBSRV_IP
+DBSRV_PORT = settings.DBSRV_PORT
+DBSRV_USERNAME = settings.DBSRV_USERNAME
+DBSRV_PASSWORD = settings.DBSRV_PASSWORD
+DBSRV_SCHEMA = settings.DBSRV_SCHEMA
+DBSRV_PTT_TABLE = settings.DBSRV_PTT_TABLE
+
+# 初始化資料庫連線，使用pymysql模組
+engine = create_engine(
+    "mysql+pymysql://{}:{}@{}:{}/{}".format(
+        DBSRV_USERNAME,
+        DBSRV_PASSWORD,
+        DBSRV_IP,
+        DBSRV_PORT,
+        DBSRV_SCHEMA,
+    )
+)
 
 
 class PttWebCrawler(object):
@@ -70,7 +92,11 @@ class PttWebCrawler(object):
         print("filename", filename)
         for i in range(end - start + 1):
             index = start + i
-            print("Processing index:", str(index))
+            print(
+                "Processing index:",
+                str(index),
+                self.PTT_URL + "/bbs/" + board + "/index" + str(index) + ".html",
+            )
             resp = requests.get(
                 url=self.PTT_URL + "/bbs/" + board + "/index" + str(index) + ".html",
                 cookies={"over18": "1"},
@@ -88,11 +114,15 @@ class PttWebCrawler(object):
                     href = div.find("a")["href"]
                     link = self.PTT_URL + href
                     article_id = re.sub(r"\.html", "", href.split("/")[-1])
+                    # 原本採寫出檔案的方式，目前直接改以直接寫入資料庫
                     if div == divs[-1] and i == end - start:  # last div of last page
-                        self.store(filename, self.parse(link, article_id, board), "a")
+                        # self.store(filename, self.parse(link, article_id, board), "a")
+                        self.parse(link, article_id, board)
                     else:
-                        self.store(filename, self.parse(link, article_id, board), "a")
-                except Exception:
+                        # self.store(filename, self.parse(link, article_id, board), "a")
+                        self.parse(link, article_id, board)
+                except Exception as e:
+                    print(e.args[0])
                     pass
             time.sleep(0.1)
         return filename
@@ -232,7 +262,36 @@ class PttWebCrawler(object):
             "messages": messages,
             "triger_time": datetime.datetime.now().astimezone().isoformat(),
         }
+
+        # todo: 目前Messages的部分，先不保留，以免佔掉太多空間；視未來是否要改變政策，再進行調整
+        data_simple = {
+            "article_id": article_id,
+            "article_title": title,
+            "author": author,
+            "board": board,
+            "content": content,
+            "date": date,
+            "ip": ip,
+            "messages": "待處理",
+            "url": link,
+            "message_count.all": message_count["all"],
+            "message_count.boo": message_count["boo"],
+            "message_count.count": message_count["count"],
+            "message_count.neutral": message_count["neutral"],
+            "message_count.push": message_count["push"],
+            "triger_time": datetime.datetime.now().astimezone().isoformat(),
+        }
         # print 'original:', d
+
+        # ptt貼文資料寫入資料庫
+        dfPTT = pd.DataFrame(data_simple, index=[0])
+        dfPTT.to_sql(
+            DBSRV_PTT_TABLE,
+            con=engine,
+            if_exists="append",
+            index=False,
+        )
+
         return json.dumps(data, sort_keys=True, ensure_ascii=False)
 
     @staticmethod

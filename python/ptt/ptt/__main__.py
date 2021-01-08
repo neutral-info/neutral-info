@@ -23,20 +23,31 @@ def run():
     HatePolitics_last_page = crawler.getLastPage("HatePolitics")
     makedirs(DATA_PATH, exist_ok=True)
     print("Processing Gossiping")
-    crawler.parse_articles(Gossiping_last_page - 100, Gossiping_last_page, "Gossiping", path=DATA_PATH)
+    crawler.parse_articles(
+        Gossiping_last_page - 100, Gossiping_last_page, "Gossiping", path=DATA_PATH
+    )
     print("Processing Stock")
-    crawler.parse_articles(Stock_last_page - 10, Stock_last_page, "Stock", path=DATA_PATH)
+    crawler.parse_articles(
+        Stock_last_page - 10, Stock_last_page, "Stock", path=DATA_PATH
+    )
     print("Processing C_Chat")
-    crawler.parse_articles(C_Chat_last_page - 20, C_Chat_last_page, "C_Chat", path=DATA_PATH)
+    crawler.parse_articles(
+        C_Chat_last_page - 20, C_Chat_last_page, "C_Chat", path=DATA_PATH
+    )
     print("Processing HatePolitics")
-    crawler.parse_articles(HatePolitics_last_page - 20, HatePolitics_last_page, "HatePolitics", path=DATA_PATH)
+    crawler.parse_articles(
+        HatePolitics_last_page - 20,
+        HatePolitics_last_page,
+        "HatePolitics",
+        path=DATA_PATH,
+    )
 
 
 @click.command()
-@click.option("-s", "--schedule_arg", is_flag=True, help="run every 2 hours")
+@click.option("-s", "--schedule_arg", is_flag=True, help="run every 12 hours")
 def main(schedule_arg):
     if schedule_arg is True:
-        schedule.every(2).hours.do(run)
+        schedule.every(12).hours.do(run)
         schedule.every().minutes.do(heart_beat)
         while True:
             schedule.run_pending()
