@@ -123,20 +123,6 @@ class News(object):
 
                                 df.loc[df["url"] == url, "keywords"] = news_keywords
 
-                            # 建立新聞的聲量假資料
-                            # 將新聞的uuid複製一份出來
-                            dfNewsVolumes = pd.DataFrame(
-                                data=df["newsuuid"].values,
-                                columns=["newsuuid"],
-                            )
-                            # 每一筆UUID對應的新聞給予假聲量
-                            newsuuids = dfNewsVolumes["newsuuid"].unique()
-                            for newsuuid in newsuuids:
-                                dfNewsVolumes.loc[
-                                    dfNewsVolumes["newsuuid"] == newsuuid,
-                                    "volume_now",
-                                ] = randint(0, 999999)
-
                             # 初始化資料庫連線，使用pymysql模組
                             engine = create_engine(
                                 "mysql+pymysql://{}:{}@{}:{}/{}".format(
@@ -146,14 +132,6 @@ class News(object):
                                     DBSRV_PORT,
                                     DBSRV_SCHEMA,
                                 )
-                            )
-
-                            # 新聞聲量資料寫入資料庫
-                            dfNewsVolumes.to_sql(
-                                DBSRV_VOLUME_TABLE,
-                                con=engine,
-                                if_exists="append",
-                                index=False,
                             )
 
                             # 新聞主體資料寫入資料庫
