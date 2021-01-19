@@ -1,0 +1,8 @@
+[default]
+schedule_minutes = "480"
+dbsrv_ip = ""
+dbsrv_port = ""
+dbsrv_username = ""
+dbsrv_password = ""
+dbsrv_schema = "neutralinfo"
+dbsrv_volume_table = "volume"
