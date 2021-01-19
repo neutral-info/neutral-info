@@ -100,16 +100,27 @@ services:
     depends_on:
       - db
 
-  # newscrawler:
-  #   restart: always
-  #   build:
-  #     context: python/newsCrawler/
-  #   environment:    
-  #     PYTHONUNBUFFERED: 1
-  #   networks:
-  #     - neutralinfo
-  #   depends_on:
-  #     - db
+  newscrawler:
+    restart: always
+    build:
+      context: python/newsCrawler/
+    environment:    
+      PYTHONUNBUFFERED: 1
+    networks:
+      - neutralinfo
+    depends_on:
+      - db
+
+  volume_process:
+    restart: always
+    build:
+      context: python/volume_process/
+    environment:    
+      PYTHONUNBUFFERED: 1
+    networks:
+      - neutralinfo
+    depends_on:
+      - db
 
   db:
     image: mysql
