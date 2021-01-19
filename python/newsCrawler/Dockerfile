@@ -19,11 +19,5 @@ COPY . .
 # install from Pipfile.lock
 RUN pipenv install --system --deploy --ignore-pipfile
 
-# 下載 CKIP 資料集
-RUN ["python", "newsFromApi/download_ckip.py"]
-
-# 清除 CKIP 壓縮檔
-RUN rm data.zip
-
 # run crawler bot every 2 hours
 CMD ["python", "newsFromApi", "--schedule_arg"] 

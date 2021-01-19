@@ -7,6 +7,7 @@ import schedule
 from dynaconf import settings
 
 from news import News
+from ckip import CKIP
 
 DATA_PATH = settings.DATA_PATH
 TARGETS = settings.NEWS_TARGETS
@@ -29,9 +30,18 @@ def run():
         crawler.getNewsFromAPI(target, NEWS_DAYS, API_KEY, DATA_PATH)
 
 
+def download_ckip():
+    ckip = CKIP()
+    print("Download CKIP....")
+    ckip.download_CKIP()
+
+
 @click.command()
 @click.option("-s", "--schedule_arg", is_flag=True, help="run every 30 minutes")
 def main(schedule_arg):
+    # 開始執行後，先下載CKIP
+    download_ckip()
+
     if schedule_arg is True:
         schedule.every(480).minutes.do(run)
         schedule.every().minutes.do(heart_beat)
