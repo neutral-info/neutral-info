@@ -99,29 +99,28 @@ class News(object):
                                 news_title = df.loc[
                                     df["url"] == url, "title"
                                 ].to_string(index=False)
-                                # news_title = news_title + df.loc[
-                                #     df["url"] == url, "description"
-                                # ].to_string(index=False)
+                                news_title = news_title + df.loc[
+                                    df["url"] == url, "description"
+                                ].to_string(index=False)
                                 print(news_title)
+
+                                # 將新聞內容進行解析
                                 ws_results = ws([news_title])
                                 pos_results = pos(ws_results)
                                 ner_results = ner(ws_results, pos_results)
-                                news_keywords = ""
-                                intPosition = 0
-                                lenNer_results = len(ner_results[0]) - 1
+
+                                # 將解析出來的字轉成特定陣列
+                                news_keywords = []
                                 for name in ner_results[0]:
-                                    print(
-                                        "{}/{}:{}".format(
-                                            intPosition, lenNer_results, name[3]
-                                        )
-                                    )
-                                    news_keywords = news_keywords + name[3]
-                                    if intPosition != lenNer_results:
-                                        news_keywords = news_keywords + ","
+                                    # print(name[3])
+                                    news_keywords.append(name[3])
 
-                                    intPosition = intPosition + 1
-
-                                df.loc[df["url"] == url, "keywords"] = news_keywords
+                                # 去除重覆的關鍵字，並轉成特定關鍵字字串
+                                strNews_keywords = ",".join(
+                                    list(dict.fromkeys(news_keywords))
+                                )
+                                print(f"keyword:{strNews_keywords}")
+                                df.loc[df["url"] == url, "keywords"] = strNews_keywords
 
                             # 初始化資料庫連線，使用pymysql模組
                             engine = create_engine(

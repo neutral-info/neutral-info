@@ -1,3 +1,4 @@
+import os
 import time
 from datetime import datetime
 from os import makedirs
@@ -40,7 +41,9 @@ def download_ckip():
 @click.option("-s", "--schedule_arg", is_flag=True, help="run every 30 minutes")
 def main(schedule_arg):
     # 開始執行後，先下載CKIP
-    download_ckip()
+    dirname = f"data"
+    if not os.path.isdir(dirname):
+        download_ckip()
 
     if schedule_arg is True:
         schedule.every(480).minutes.do(run)
