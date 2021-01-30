@@ -77,14 +77,17 @@ class Volume(object):
             if not dfNewsInPtt.empty:
                 print(dfNewsRow["newsuuid"], dfNewsRow["title"], dfNewsRow["url"])
 
+                # 如果該新聞出現在ptt則加總其留言量
+                # 按規劃，臉書的情緒加權20，留言加權未設定
                 for index, dfNewsInPttRow in dfNewsInPtt.iterrows():
                     print(
                         dfNewsInPttRow["article_id"],
                         dfNewsInPttRow["message_count.all"],
                         dfNewsInPttRow["triger_time"],
                     )
-                    news_ptt_message_all_count = news_ptt_message_all_count + int(
-                        dfNewsInPttRow["message_count.all"]
+                    news_ptt_message_all_count = (
+                        news_ptt_message_all_count
+                        + int(dfNewsInPttRow["message_count.all"]) * 20
                     )
 
                 print(
@@ -100,15 +103,19 @@ class Volume(object):
             if not dfNewsInFBFanpage.empty:
                 print(dfNewsRow["newsuuid"], dfNewsRow["title"], dfNewsRow["url"])
 
+                # 如果該新聞出現在粉絲頁則加總其留言量
+                # 按規劃，臉書的情緒加權10，留言加權50
                 for index, dfNewsInFBFanpageRow in dfNewsInFBFanpage.iterrows():
                     print(
                         dfNewsInFBFanpageRow["sys_id"],
                         dfNewsInFBFanpageRow["post_comment_count"],
+                        dfNewsInFBFanpageRow["allEmoji"],
                         dfNewsInFBFanpageRow["crawler_time"],
                     )
                     news_fbfanpage_message_all_count = (
                         news_fbfanpage_message_all_count
-                        + int(dfNewsInFBFanpageRow["post_comment_count"])
+                        + int(dfNewsInFBFanpageRow["post_comment_count"]) * 50
+                        + int(dfNewsInFBFanpageRow["allEmoji"]) * 10
                     )
 
                 print(
@@ -117,6 +124,7 @@ class Volume(object):
                     )
                 )
 
+            # 加總現在的聲量
             volume_now = int(news_ptt_message_all_count) + int(
                 news_fbfanpage_message_all_count
             )
