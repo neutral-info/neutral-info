@@ -244,7 +244,7 @@ class PttWebCrawler(object):
             "neutral": n,
         }
 
-        # print 'msgs', messages
+        # print("msgs", messages)
         # print 'mscounts', message_count
 
         # json data
@@ -272,7 +272,7 @@ class PttWebCrawler(object):
             "content": content,
             "date": date,
             "ip": ip,
-            "messages": "待處理",
+            "messages": json.dumps(messages),
             "url": link,
             "message_count.all": message_count["all"],
             "message_count.boo": message_count["boo"],
