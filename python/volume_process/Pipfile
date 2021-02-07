@@ -13,6 +13,7 @@ pymysql = "*"
 dynaconf = "*"
 click = "*"
 schedule = "*"
+datetime = "*"
 
 [requires]
 python_version = "3.9"

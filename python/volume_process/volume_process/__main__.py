@@ -16,6 +16,7 @@ def run():
     # 處理
     volume = Volume()
     volume.calculate_volume()
+    volume.calculate_bomb()
 
 
 @click.command()
