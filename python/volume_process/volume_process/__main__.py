@@ -16,7 +16,12 @@ def run():
     # 處理
     volume = Volume()
     volume.calculate_volume()
-    volume.calculate_bomb()
+    volume.calculate_power()
+    volume.replace_old_vwNews()
+
+
+def replace_old_vwNews():
+    volume = Volume()
     volume.replace_old_vwNews()
 
 

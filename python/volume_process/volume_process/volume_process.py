@@ -13,7 +13,7 @@ DBSRV_USERNAME = settings.DBSRV_USERNAME
 DBSRV_PASSWORD = settings.DBSRV_PASSWORD
 DBSRV_SCHEMA = settings.DBSRV_SCHEMA
 DBSRV_VOLUME_TABLE = settings.DBSRV_VOLUME_TABLE
-DBSRV_BOMB_TABLE = settings.DBSRV_BOMB_TABLE
+DBSRV_POWER_TABLE = settings.DBSRV_POWER_TABLE
 
 
 class Volume(object):
@@ -145,7 +145,7 @@ class Volume(object):
 
         df.to_sql(DBSRV_VOLUME_TABLE, con=engine, if_exists="append", index=False)
 
-    def calculate_bomb(self):
+    def calculate_power(self):
         # 利用聲量來做為爆發力的計算基準
 
         # 初始化資料庫連線，使用pymysql模組
@@ -168,10 +168,10 @@ class Volume(object):
         dfVolume = pd.read_sql(sql=queryVolumeList, con=conn)  # mysql query
         lendfVolume: int = len(dfVolume)
 
-        # 用來儲存 bomb 的斜率
-        newsBomb: dict = {
+        # 用來儲存 power 的斜率
+        newsPower: dict = {
             "newsuuid": [],
-            "bomb_now": [],
+            "power_now": [],
         }
 
         # print(generator_df)
@@ -204,7 +204,7 @@ class Volume(object):
                     # )
 
                     first_date: str = str(dfVolumeInVolumesRow["calculate_time"])
-                    bomb_now: float = 0
+                    power_now: float = 0
 
                     # 只對最早的一筆聲量時間進行比較，用該新文第一次出現聲量的時間，
                     # 來做為 X0 的值
@@ -219,25 +219,25 @@ class Volume(object):
                         if timediff > 0:
                             # print(f'now volume: {dfVolumeRow["volume_now"]}')
                             # print(f'last volume: {dfVolumeInVolumesRow["volume_now"]}')
-                            bomb_now = (
+                            power_now = (
                                 int(dfVolumeInVolumesRow["volume_now"]) / timediff
                             )
                             print(
-                                f"time diff: {timediff},volumenow: {dfVolumeInVolumesRow['volume_now']}, bomb_now: {bomb_now}"
+                                f"time diff: {timediff},volumenow: {dfVolumeInVolumesRow['volume_now']}, power_now: {power_now}"
                             )
 
-                            if bomb_now > 0:
-                                newsBomb["newsuuid"].append(
+                            if power_now > 0:
+                                newsPower["newsuuid"].append(
                                     dfVolumeInVolumesRow["newsuuid"]
                                 )
-                                newsBomb["bomb_now"].append(bomb_now)
+                                newsPower["power_now"].append(power_now)
 
                         break
 
-        df = pd.DataFrame.from_dict(newsBomb)
+        df = pd.DataFrame.from_dict(newsPower)
         print(df)
 
-        df.to_sql(DBSRV_BOMB_TABLE, con=engine, if_exists="append", index=False)
+        df.to_sql(DBSRV_POWER_TABLE, con=engine, if_exists="append", index=False)
 
     def replace_old_vwNews(self):
         # 將計算後的結果，原本以view表呈現，
