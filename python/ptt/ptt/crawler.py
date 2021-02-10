@@ -131,7 +131,9 @@ class PttWebCrawler(object):
         link = self.PTT_URL + "/bbs/" + board + "/" + article_id + ".html"
         filename = board + "-" + article_id + ".json"
         filename = os.path.join(path, filename)
-        self.store(filename, self.parse(link, article_id, board), "w")
+        # 原本採寫出檔案的方式，目前直接改以直接寫入資料庫
+        # self.store(filename, self.parse(link, article_id, board), "w")
+        self.parse(link, article_id, board)
         return filename
 
     @staticmethod
@@ -180,7 +182,7 @@ class PttWebCrawler(object):
             push.extract()
 
         try:
-            ip = main_content.find(text=re.compile(u"※ 發信站:"))
+            ip = main_content.find(text=re.compile("※ 發信站:"))
             ip = re.search(r"[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*", ip).group()
         except Exception:
             ip = "None"
@@ -190,7 +192,7 @@ class PttWebCrawler(object):
         filtered = [
             v
             for v in main_content.stripped_strings
-            if v[0] not in [u"※", u"◆"] and v[:2] not in [u"--"]
+            if v[0] not in ["※", "◆"] and v[:2] not in ["--"]
         ]
         expr = re.compile(
             r"[^\u4e00-\u9fa5\u3002\uff1b\uff0c\uff1a\u201c\u201d\uff08\uff09\u3001\uff1f\u300a\u300b\s\w:/-_.?~%()]"
@@ -228,9 +230,9 @@ class PttWebCrawler(object):
                     "push_ipdatetime": push_ipdatetime,
                 }
             )
-            if push_tag == u"推":
+            if push_tag == "推":
                 p += 1
-            elif push_tag == u"噓":
+            elif push_tag == "噓":
                 b += 1
             else:
                 n += 1
@@ -263,7 +265,7 @@ class PttWebCrawler(object):
             "triger_time": datetime.datetime.now().astimezone().isoformat(),
         }
 
-        # todo: 目前Messages的部分，先不保留，以免佔掉太多空間；視未來是否要改變政策，再進行調整
+        # Messages的部分，也一併保留
         data_simple = {
             "article_id": article_id,
             "article_title": title,
@@ -272,7 +274,7 @@ class PttWebCrawler(object):
             "content": content,
             "date": date,
             "ip": ip,
-            "messages": json.dumps(messages),
+            "messages": json.dumps(messages, ensure_ascii=False),
             "url": link,
             "message_count.all": message_count["all"],
             "message_count.boo": message_count["boo"],
@@ -283,14 +285,48 @@ class PttWebCrawler(object):
         }
         # print 'original:', d
 
-        # ptt貼文資料寫入資料庫
-        dfPTT = pd.DataFrame(data_simple, index=[0])
-        dfPTT.to_sql(
-            DBSRV_PTT_TABLE,
-            con=engine,
-            if_exists="append",
-            index=False,
-        )
+        with engine.connect() as conn:
+
+            # 原本PTT爬蟲資料採重覆新增，不過考量因將回文內容也納入蒐集後，
+            # 所需空間快速增加：因此調整成會先判斷該筆貼文是否已存在，
+            # 如以存在就採更新同一筆，如無則新增一筆
+
+            query_ptt = """ select * from ptt p where p.article_id = %s """
+            rs_ptt = conn.execute(query_ptt, str(article_id))
+
+            if rs_ptt:
+                for row in rs_ptt:
+                    print(
+                        f"update count from:{ row['message_count.all']}, to:{message_count['all']}"
+                    )
+                    update_ptt = """ update ptt SET messages = %s, \
+                                                    `message_count.all` = %s, \
+                                                    `message_count.boo` = %s, \
+                                                    `message_count.count` = %s, \
+                                                    `message_count.neutral` = %s, \
+                                                    `message_count.push` = %s, \
+                                                    triger_time = %s \
+                                    where article_id = %s """
+                    rs_ptt = conn.execute(
+                        update_ptt,
+                        json.dumps(messages, ensure_ascii=False),
+                        message_count["all"],
+                        message_count["boo"],
+                        message_count["count"],
+                        message_count["neutral"],
+                        message_count["push"],
+                        datetime.datetime.now().astimezone().isoformat(),
+                        str(article_id),
+                    )
+            else:
+                # ptt貼文資料寫入資料庫
+                dfPTT = pd.DataFrame(data_simple, index=[0])
+                dfPTT.to_sql(
+                    DBSRV_PTT_TABLE,
+                    con=engine,
+                    if_exists="append",
+                    index=False,
+                )
 
         return json.dumps(data, sort_keys=True, ensure_ascii=False)
 
