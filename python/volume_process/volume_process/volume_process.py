@@ -4,6 +4,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
 from dynaconf import settings
+from datetime import datetime
 
 # 從setting.toml中讀取資料庫相關設定
 DBSRV_IP = settings.DBSRV_IP
@@ -145,6 +146,7 @@ class Volume(object):
         df.to_sql(DBSRV_VOLUME_TABLE, con=engine, if_exists="append", index=False)
 
     def calculate_bomb(self):
+        # 利用聲量來做為爆發力的計算基準
 
         # 初始化資料庫連線，使用pymysql模組
         engine = create_engine(
@@ -159,14 +161,14 @@ class Volume(object):
 
         conn = engine.connect()
 
-        # 檢索近14天的新聞，註：時間控制在view上，降低系統操作負擔
-        queryVolumeList = "select * from JSON2.volume_last vl "
+        # 檢索最新的聲量
+        queryVolumeList = "select * from volume_last vl "
 
-        # 取得新聞清單
+        # 取得生量清單
         dfVolume = pd.read_sql(sql=queryVolumeList, con=conn)  # mysql query
         lendfVolume: int = len(dfVolume)
 
-        # 用來儲存 news 聲量
+        # 用來儲存 bomb 的斜率
         newsBomb: dict = {
             "newsuuid": [],
             "bomb_now": [],
@@ -204,7 +206,8 @@ class Volume(object):
                     first_date: str = str(dfVolumeInVolumesRow["calculate_time"])
                     bomb_now: float = 0
 
-                    # 只對最早的一筆聲量時間進行比較
+                    # 只對最早的一筆聲量時間進行比較，用該新文第一次出現聲量的時間，
+                    # 來做為 X0 的值
                     if index == 0:
 
                         # 取得該新聞第一次出現至今的秒數
@@ -236,13 +239,31 @@ class Volume(object):
 
         df.to_sql(DBSRV_BOMB_TABLE, con=engine, if_exists="append", index=False)
 
+    def replace_old_vwNews(self):
+        # 將計算後的結果，原本以view表呈現，
+        # 但這樣太耗計算資源，因此將view表直接轉成一般table
+        # 很粗暴，不過目前先這樣，如果後續有時間再調整
+
+        # 初始化資料庫連線，使用pymysql模組
+        engine = create_engine(
+            "mysql+pymysql://{}:{}@{}:{}/{}".format(
+                DBSRV_USERNAME,
+                DBSRV_PASSWORD,
+                DBSRV_IP,
+                DBSRV_PORT,
+                DBSRV_SCHEMA,
+            )
+        )
+
+        conn = engine.connect()
+
         print("建立 Temp_vwNews 暫存表")
         # 先將view表讀出來，建立暫存表，再清掉舊的，再把名字改成新的
         creatTemp_vwNewsVolumeList = """ create table Temp_vwNews as \
                                             select * from vwNews_view vn  """
         conn.execute(creatTemp_vwNewsVolumeList)
 
-        print("移除 vwNews 表")
+        print("移除 old vwNews 表")
         # 先將view表讀出來，建立暫存表，再清掉舊的，再把名字改成新的
         drop_vwNews = """ DROP TABLE vwNews; """
         conn.execute(drop_vwNews)

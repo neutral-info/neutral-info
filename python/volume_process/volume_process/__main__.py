@@ -17,6 +17,7 @@ def run():
     volume = Volume()
     volume.calculate_volume()
     volume.calculate_bomb()
+    volume.replace_old_vwNews()
 
 
 @click.command()
