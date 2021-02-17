@@ -134,8 +134,9 @@ services:
     ports:
       - 3306:3306
     volumes:
-      - ./sqls:/docker-entrypoint-initdb.d
-      - mysql:/var/lib/mysql
+      - "mysql:/var/lib/mysql"
+      - "./sqls/schema.sql:/docker-entrypoint-initdb.d/1.sql"
+      - "./sqls/data.sql:/docker-entrypoint-initdb.d/2.sql"
     networks:
       - neutralinfo
 
