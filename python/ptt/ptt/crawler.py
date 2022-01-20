@@ -291,6 +291,7 @@ class PttWebCrawler(object):
             # 所需空間快速增加：因此調整成會先判斷該筆貼文是否已存在，
             # 如以存在就採更新同一筆，如無則新增一筆
 
+            # FIXME: 資料庫沒資料時，以下SQL指令會觸發例外
             query_ptt = """ select * from ptt p where p.article_id = %s """
             rs_ptt = conn.execute(query_ptt, str(article_id))
 
